@@ -3,6 +3,7 @@
 #include "Engine/Engine.h"
 #include "Subsystems/EngineSubsystem.h"
 #include "BlueprintHookingTypes.h"
+#include "Engine/InputDelegateBinding.h"
 #include "BlueprintHookManager.generated.h"
 
 class UBlueprintGeneratedClass;
@@ -12,6 +13,8 @@ UCLASS()
 class SML_API UBlueprintMixinHostComponent : public UActorComponent {
 	GENERATED_BODY()
 public:
+	UBlueprintMixinHostComponent();
+	
 	// Begin UActorComponent interface
 	virtual void OnComponentCreated() override;
 	virtual void BeginPlay() override;
@@ -30,6 +33,14 @@ protected:
 	TArray<UBlueprintActorMixin*> MixinInstances;
 
 	friend class UBlueprintHookManager;
+	friend class UMixinInputDelegateBinding;
+};
+
+UCLASS()
+class SML_API UMixinInputDelegateBinding : public UInputDelegateBinding  {
+	GENERATED_BODY()
+public:
+	virtual void BindToInputComponent(UInputComponent* InputComponent, UObject* ObjectToBindTo) const override;
 };
 
 UCLASS()
@@ -54,6 +65,9 @@ private:
 	/** Called to sanotize the simple construction script and purge any transient nodes from its lists to avoid runtime crash */
 	static void SanitizeSimpleConstructionScript(class USimpleConstructionScript* InSimpleConstructionScript);
 
+	/** Called to sanitize the blueprint generated class and remove any transient dynamic bindings from it */
+	static void SanitizeBlueprintGeneratedClass(UBlueprintGeneratedClass* BlueprintGeneratedClass);
+
 	/** Applies currently registered and valid hooks and mixins to the blueprint class */
 	void ApplyRegisteredHooksToBlueprintClass(UBlueprintGeneratedClass* BlueprintGeneratedClass) const;
 	
@@ -62,6 +76,9 @@ private:
 
 	/** Re-applies currently registered blueprint mixins to the provided BPGC */
 	void ApplyActorMixinsToBlueprintClass(UBlueprintGeneratedClass* BlueprintGeneratedClass, TArray<UHookBlueprintGeneratedClass*>& BlueprintMixins) const;
+
+	/** Registers the mixin component on level actors which do not run the construction script */
+	void ApplyMixinsToLevelActors(ULevel* Level);
 
 	/** Applies the new script code to the function while also stashing away the original code */
 	static void UpdateFunctionScriptCode(UFunction* InFunction, const TArray<uint8>& NewScriptCode, const TArray<uint8>& OriginalScriptCode);

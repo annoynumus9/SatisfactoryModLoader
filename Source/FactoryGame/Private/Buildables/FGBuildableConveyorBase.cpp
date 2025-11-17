@@ -49,6 +49,7 @@ void AFGBuildableConveyorBase::GetLifetimeReplicatedProps(TArray< FLifetimePrope
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(AFGBuildableConveyorBase, mConveyorChainActor);
 	DOREPLIFETIME(AFGBuildableConveyorBase, mChainSegmentIndex);
+	DOREPLIFETIME(AFGBuildableConveyorBase, mAttachedThroughputMonitors);
 }
 void AFGBuildableConveyorBase::PreReplication(IRepChangedPropertyTracker& ChangedPropertyTracker){ }
 void AFGBuildableConveyorBase::BeginPlay(){ Super::BeginPlay(); }
@@ -76,6 +77,7 @@ void AFGBuildableConveyorBase::OnUseServerRepInput( AFGCharacterPlayer* byCharac
 void AFGBuildableConveyorBase::BuildStaticItemInstances(){ }
 void AFGBuildableConveyorBase::DestroyStaticItemInstancesNextFrame(){ }
 void AFGBuildableConveyorBase::Upgrade_Implementation(AActor* newActor){ Super::Upgrade_Implementation(newActor); }
+void AFGBuildableConveyorBase::GetChildDismantleActors_Implementation(TArray<AActor*>& out_ChildDismantleActors) const{ Super::GetChildDismantleActors_Implementation(out_ChildDismantleActors); }
 float AFGBuildableConveyorBase::GetDistanceBetweenFirstConnection(){ return float(); }
 float AFGBuildableConveyorBase::GetDistanceBetweenLastConnection(){ return float(); }
 void AFGBuildableConveyorBase::SetConveyorChainActor(AFGConveyorChainActor* chainActor){ }

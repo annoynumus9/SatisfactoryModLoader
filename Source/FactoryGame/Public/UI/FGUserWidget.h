@@ -105,6 +105,8 @@ struct FFGKeybinding // this has a details customization in FGKeybindingDetails.
 		if (HintText.ToString() != Rhs.HintText.ToString()) return false;
 		return true;
 	}
+
+	UFGUserWidget* DelegateWidget = nullptr; // the widget that added it's keybindings via AddChildKeybindings, needed for callback resolution.
 };
 
 USTRUCT( BlueprintType )
@@ -287,12 +289,17 @@ public:
 
 	UFUNCTION( BlueprintCallable, Category = "Input" )
 	bool UpdateKeybindingByTag( FName HintTag, FKey NewKey );
+
+	UFUNCTION( BlueprintCallable, Category = "Input" )
+	void AddChildKeybindings(UFGUserWidget* ChildWidget);
+
 private:
 
 	FReply CallDelegateForKeyEventOfType(const FKeyEvent& InKeyEvent, EFGKeyHintDelegateType DelegateType);
 	FReply CallKeybindingDelegate(const FFGKeybinding& Keybinding, EFGKeyHintDelegateType DelegateType);
 	void BeginLongPress(const FFGKeybinding& Keybinding);
-
+	static void FakeKeyDownAndUpEvents(const FKeyEvent& InKeyEvent);
+	static void FakeKeyUpEvent(const FKeyEvent& InKeyEvent);
 	void AddParentKeybindings();
 	TArray< FFGKeybinding > AllKeybindings;
 };

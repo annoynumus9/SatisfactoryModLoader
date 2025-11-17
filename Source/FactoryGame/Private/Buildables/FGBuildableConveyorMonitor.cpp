@@ -22,8 +22,7 @@ void AFGBuildableConveyorMonitor::EndPlay(const EEndPlayReason::Type EndPlayReas
 void AFGBuildableConveyorMonitor::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(AFGBuildableConveyorMonitor, mPropertyReplicator);
-	DOREPLIFETIME(AFGBuildableConveyorMonitor, mCalculatedItemsPerMinute);
-	DOREPLIFETIME(AFGBuildableConveyorMonitor, mConfidence);
+	DOREPLIFETIME(AFGBuildableConveyorMonitor, mReplicatedCoreData);
 }
 void AFGBuildableConveyorMonitor::RegisterInteractingPlayer_Implementation(class AFGCharacterPlayer* player){ Super::RegisterInteractingPlayer_Implementation(player); }
 void AFGBuildableConveyorMonitor::UnregisterInteractingPlayer_Implementation(class AFGCharacterPlayer* player){ Super::UnregisterInteractingPlayer_Implementation(player); }
@@ -31,6 +30,7 @@ float AFGBuildableConveyorMonitor::GetSignificanceRange(){ return 0; }
 void AFGBuildableConveyorMonitor::GainedSignificance_Implementation(){ }
 void AFGBuildableConveyorMonitor::LostSignificance_Implementation(){ }
 void AFGBuildableConveyorMonitor::SetSnappedSplineBuildable(AFGBuildable* buildable){ Super::SetSnappedSplineBuildable(buildable); }
+void AFGBuildableConveyorMonitor::InitializeOffset(bool forceUpdate){ }
 AFGBuildableConveyorBase* AFGBuildableConveyorMonitor::GetConveyorBase(){ return nullptr; }
 TArray<FItemMonitorData> AFGBuildableConveyorMonitor::GetAverageDataForUIRepresentation(){ return TArray<FItemMonitorData>(); }
 void AFGBuildableConveyorMonitor::SetupMonitorData(){ }
@@ -38,7 +38,7 @@ void AFGBuildableConveyorMonitor::CalculateItemsPerMinute(){ }
 void AFGBuildableConveyorMonitor::UpdatePassedTimeAndItems(double time, int32 numItems){ }
 void AFGBuildableConveyorMonitor::PlayerResetMonitorData(){ }
 void AFGBuildableConveyorMonitor::ResetMonitorData(AFGConveyorChainActor* chainActor){ }
-void AFGBuildableConveyorMonitor::OnRep_CalculatedItemsPerMinute(){ }
+void AFGBuildableConveyorMonitor::OnRep_ReplicatedCoreData(){ }
 void AFGBuildableConveyorMonitor::OnRep_MonitorData(){ }
 void AFGBuildableConveyorMonitor::DebugPrintData() const{ }
 void AFGBuildableConveyorMonitor::GetConditionalReplicatedProps(TArray<FFGCondReplicatedProperty>& outProps) const{ }

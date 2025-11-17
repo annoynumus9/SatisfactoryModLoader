@@ -6,6 +6,7 @@
 #include "FGRemoteCallObject.h"
 #include "GameplayTagContainer.h"
 #include "Registry/RemoteCallObjectRegistry.h"
+#include "Patching/DeprecatedLegacyHookingTypes.h"
 #include "GameInstanceModule.generated.h"
 
 class UHookBlueprintGeneratedClass;
@@ -71,9 +72,11 @@ public:
     Make sure to call super on the C++ side if you have both a C++ and Blueprint implementation. */
     virtual void DispatchLifecycleEvent(ELifecyclePhase Phase) override;
 private:
-	/** DEPRECATED - to be removed. Only exists to make the migration to new Actor Mixins easier. */
-	UPROPERTY(Instanced, VisibleDefaultsOnly, Category = "Deprecated")
-	TArray<class UObject*> BlueprintSCSHooks;
+    /** DEPRECATED - to be removed, entries no longer do anything.
+        The data is temporarily kept around to make the migration to Actor Mixins easier. See the Upgrading guide on the docs.
+        There is no need to clear data from this field as it will be deleted in later version. */
+    UPROPERTY(Instanced, VisibleDefaultsOnly, Category = "Deprecated", meta = (DisplayName = "DEPRECATED Blueprint SCS Hooks"))
+    TArray<UBlueprintSCSHookData*> BlueprintSCSHooks;
 protected:
     /** Allow SetOwnerModReference access to game instance module manager */
     friend class UGameInstanceModuleManager;

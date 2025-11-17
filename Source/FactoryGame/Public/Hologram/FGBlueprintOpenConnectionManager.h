@@ -62,7 +62,7 @@ private:
 
 /** Class responsible for connecting open ended connections on a blueprint to buildables in the world. This is the base manager class containing some basic functionality and boilerplate functions for managing connections of a certain type. */
 template<class ConnectionClass, class BridgeHologramClass>
-class FACTORYGAME_API FGBlueprintOpenConnectionManager : public FGBlueprintOpenConnectionManagerBase
+class FGBlueprintOpenConnectionManager : public FGBlueprintOpenConnectionManagerBase
 {
 public:
 	/** Struct representing a single open connection on the blueprint hologram. */
@@ -638,7 +638,7 @@ bool FGBlueprintOpenConnectionManager<ConnectionClass, BridgeHologramClass>::Att
 	
 	for( OpenConnectionState& State : mOpenConnectionStates )
 	{
-		if( IsValid( State.TargetConnection ) && !State.HasSnappedTargetConnection )
+		if( IsValid( State.TargetConnection ) && State.IsValid && !State.HasSnappedTargetConnection )
 		{
 			bFoundUnsnappedTargetConnection = true;
 			State.HasSnappedTargetConnection = true;
@@ -654,7 +654,7 @@ bool FGBlueprintOpenConnectionManager<ConnectionClass, BridgeHologramClass>::Can
 	// Can take next build step if we're trying to snap an open connection to a target connection
 	for( const OpenConnectionState& State : mOpenConnectionStates )
 	{
-		if( IsValid( State.TargetConnection ) && !State.HasSnappedTargetConnection )
+		if( IsValid( State.TargetConnection ) && State.IsValid && !State.HasSnappedTargetConnection )
 		{
 			return true;
 		}

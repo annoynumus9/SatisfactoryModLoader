@@ -13,6 +13,8 @@ class UFGElevatorMovementComponent;
 class AFGBuildableElevator;
 class UBoxComponent;
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam( FOnSongIdChanged, int32, newSongId );
+
 UENUM( BlueprintType )
 enum class EElevatorConsoleLocation : uint8
 {
@@ -79,7 +81,7 @@ public:
 
 	virtual bool ShouldSave_Implementation() const override { return true; }
 	
-	TArray< APawn* > GetOccupyingPawns() { return mOccupyingPawns; }
+	TArray< APawn* > GetOccupyingPawns() { return mOwningElevator ? mOwningElevator->GetOccupyingPawns() : TArray<APawn*>() ; }
 
 	UFUNCTION( BlueprintCallable, Category="ElevatorCabin" )
 	void OnPawnEnterCabin( APawn* pawn, const FVector& lastLocation );
@@ -172,7 +174,8 @@ public:
 	UFUNCTION(BlueprintImplementableEvent, Category="FactoryGame|Buildable|ElevatorFloorStop" )
 	void OnPowerStatusChanged( bool hasPower );
 
-	
+	UFUNCTION(BlueprintNativeEvent, Category="FactoryGame|Buildable|ElevatorFloorStop" )
+	UBoxComponent* GetOccupyingBoxCollisionComp() const;
 	
 	FTransform GetConsoleToWorldForConsoleSection( EElevatorConsoleLocation consoleType ) const
 	{
@@ -214,7 +217,7 @@ public:
 	}
 
 	// Called from owning elevator to notify of change to song ID (which in turn triggers a blueprint event)
-	void NotifySongIdChanged( uint8 newSongId ) { OnSongIDChanged( newSongId ); }
+	void NotifySongIdChanged( uint8 newSongId ) { SongIDChangedBroadcast.Broadcast( newSongId ); OnSongIDChanged( newSongId ); }
 	
 	UFUNCTION(BlueprintImplementableEvent, Category="Elevator Cabin" )
 	void OnSongIDChanged( uint8 newSongId );
@@ -222,6 +225,10 @@ public:
 	void ApplyCustomizatinDataFromElevator();
 	
 	UStaticMeshComponent* GetMeshComponent() const { return mMeshComponent; }
+
+public:
+	UPROPERTY( BlueprintReadWrite, BlueprintAssignable, Category = "Elevator Cabin" )
+	FOnSongIdChanged SongIDChangedBroadcast;
 	
 protected:
 #if WITH_EDITOR
@@ -289,8 +296,6 @@ protected:
 	FVector mWidgetInteractExtents;
 
 private:
-	UPROPERTY()
-	TArray< APawn* > mOccupyingPawns;
 
 	UPROPERTY()
 	EElevatorState mCachedElevatorState;

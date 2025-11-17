@@ -174,7 +174,7 @@ protected:
 	UFUNCTION( BlueprintCallable, Category = "Photo Mode" )
 	void ClearPMOMap( const int expectedNumElements = 0 );
 
-	UFUNCTION( BlueprintImplementableEvent, Category = "Photo Mode" )
+	UFUNCTION( BlueprintImplementableEvent, BlueprintCallable, Category = "Photo Mode" )
 	void OnPhotoTaken();
 	
 	UFUNCTION( BlueprintPure, Category = "Photo Mode" )
@@ -225,6 +225,8 @@ private:
 	bool mIsCameraDecoupled = false;
 	bool mIsPlayerVisible = true;
 	
+	float ControllerTurnAtRate( float rate, bool WithInvertHandling = true );
+	float ControllerLookUpAtRate( float rate, bool WithInvertHandling = true );
 };
 
 UCLASS( Blueprintable )

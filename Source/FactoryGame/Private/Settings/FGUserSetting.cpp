@@ -9,6 +9,7 @@ DEFINE_LOG_CATEGORY(LogUserSetting);
 bool UFGUserSetting::SetupValueFunction( UK2Node_CallFunction* callFunction, bool isGetterFunction) const{ return bool(); }
 EDataValidationResult UFGUserSetting::IsDataValid(FDataValidationContext& validationContext) const{ return EDataValidationResult::Valid; }
 #endif 
+bool FSettingsWidgetLocationDescriptor::operator==(const FSettingsWidgetLocationDescriptor& rhs) const{ return false; }
 UFGUserSetting::UFGUserSetting() : Super() {
 	this->StrId = TEXT("");
 	this->UseCVar = false;
@@ -16,16 +17,12 @@ UFGUserSetting::UFGUserSetting() : Super() {
 	this->DocString = TEXT("");
 	this->DisplayName = INVTEXT("");
 	this->ToolTip = INVTEXT("");
-	this->CategoryClass = nullptr;
-	this->SubCategoryClass = nullptr;
-	this->MenuPriority = 0.0;
 	this->IsSettingSessionWide = false;
 	this->ApplyType = FSoftClassPath("/Script/FactoryGame.FGUserSettingApplyType");
 	this->ValueSelector = nullptr;
 	this->CustomValueSelectorWidget = nullptr;
 	this->ManagerTypeAvailability = nullptr;
 	this->EditabilityDisqualifiers = 0;
-	this->SubOptionTo = nullptr;
 	this->ShowInBuilds = EIncludeInBuilds::IIB_Development;
 }
 FOptionRowData UFGUserSetting::ToOptionRowData() const{ return FOptionRowData(); }
@@ -34,7 +31,17 @@ bool UFGUserSetting::ShouldShowInCurrentConfig(ESettingVisiblityDisqualifier vis
 FVariant UFGUserSetting::GetDefaultValue() const{ return FVariant(); }
 IFGOptionInterface* UFGUserSetting::GetPrimaryOptionInterface(UWorld* world) const{ return nullptr; }
 TSubclassOf< class UFGOptionsValueController > UFGUserSetting::GetValueSelectorWidgetClass() const{ return TSubclassOf<class UFGOptionsValueController>(); }
-void UFGUserSetting::PostLoad(){ Super::PostLoad(); }
+void UFGUserSetting::PostLoad() {
+	Super::PostLoad();
+	if (WidgetsToCreate.IsEmpty()) {
+		WidgetsToCreate.Emplace(FSettingsWidgetLocationDescriptor(
+			CategoryClass_DEPRECATED,
+			SubCategoryClass_DEPRECATED,
+			SubOptionTo_DEPRECATED,
+			MenuPriority_DEPRECATED
+		));
+	}
+}
 void UFGUserSetting::Serialize(FStructuredArchive::FRecord Record){ Super::Serialize(Record); }
 bool UFGUserSetting::HasVisibilityDisqualifier(ESettingVisiblityDisqualifier disqualifier) const{ return bool(); }
 bool UFGUserSetting::HasEditabilityDisqualifier(ESettingEditabilityDisqualifier disqualifier) const{ return bool(); }

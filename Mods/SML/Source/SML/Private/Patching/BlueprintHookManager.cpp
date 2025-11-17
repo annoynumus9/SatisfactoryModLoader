@@ -5,12 +5,19 @@
 #include "UObject/ObjectSaveContext.h"
 #include "Engine/BlueprintGeneratedClass.h"
 #include "Engine/GameInstance.h"
+#include "Engine/Level.h"
 #include "Misc/CommandLine.h"
 #include "Toolkit/HookingCodeGeneration.h"
 #include "Toolkit/ScriptExprHelper.h"
 #include "Patching/BlueprintHookBlueprint.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogBlueprintHookManager, All, All);
+
+UBlueprintMixinHostComponent::UBlueprintMixinHostComponent() {
+	PrimaryComponentTick.bCanEverTick = true;
+	PrimaryComponentTick.bStartWithTickEnabled = true;
+	PrimaryComponentTick.bAllowTickOnDedicatedServer = true;	
+}
 
 void UBlueprintMixinHostComponent::OnComponentCreated() {
 	Super::OnComponentCreated();
@@ -115,6 +122,17 @@ UBlueprintActorMixin* UBlueprintMixinHostComponent::FindMixinByClass(TSubclassOf
 		}
 	}
 	return nullptr;
+}
+
+void UMixinInputDelegateBinding::BindToInputComponent(UInputComponent* InputComponent, UObject* ObjectToBindTo) const {
+	if (AActor* Actor = Cast<AActor>(ObjectToBindTo)) {
+		UBlueprintMixinHostComponent* MixinHostComponent = Actor->GetComponentByClass<UBlueprintMixinHostComponent>();
+		if (MixinHostComponent) {
+			for (UBlueprintActorMixin* ActorMixin : MixinHostComponent->MixinInstances) {
+				UInputDelegateBinding::BindInputDelegates(ActorMixin->GetClass(), InputComponent, ActorMixin);
+			}
+		}
+	}
 }
 
 bool UBlueprintHookManager::GetOriginalScriptCodeFromFunction(const UFunction* InFunction, TArray<uint8>& OutOriginalScriptCode) {
@@ -449,11 +467,50 @@ void UBlueprintHookManager::ApplyActorMixinsToBlueprintClass(UBlueprintGenerated
 		// and we will purge that extra node that we have added before the asset is actually saved on disk
 		const_cast<TArray<USCS_Node*>&>(BlueprintGeneratedClass->SimpleConstructionScript->GetRootNodes()).Add(MixinComponentHostNode);
 		const_cast<TArray<USCS_Node*>&>(BlueprintGeneratedClass->SimpleConstructionScript->GetAllNodes()).Add(MixinComponentHostNode);
+
+		UMixinInputDelegateBinding* InputDelegateBindingWrapper = NewObject<UMixinInputDelegateBinding>(BlueprintGeneratedClass, UMixinInputDelegateBinding::StaticClass(), TEXT("TRANSIENT_MixinInputDelegateBindingWrapper"), RF_Transient);
+		BlueprintGeneratedClass->DynamicBindingObjects.Add(InputDelegateBindingWrapper);
 	}
 
 	// Replace the mixin classes on the component template. All new actors created from the template will have the provided mixins initialized.
 	UBlueprintMixinHostComponent* MixinHostComponentTemplate = CastChecked<UBlueprintMixinHostComponent>(MixinComponentHostNode->ComponentTemplate);
 	MixinHostComponentTemplate->MixinClasses = BlueprintMixins;
+}
+
+void UBlueprintHookManager::ApplyMixinsToLevelActors(ULevel* Level) {
+	for (auto& [ClassPath, Hooks] : InstalledHooksPerBlueprintGeneratedClass) {
+		UClass* MixinTargetClass = Cast<UClass>(FSoftObjectPath(ClassPath).TryLoad());
+		TArray<UHookBlueprintGeneratedClass*> MixinClasses;
+		for (auto& Hook : Hooks) {
+			if (UHookBlueprintGeneratedClass* LoadedHookClass = Hook.LoadSynchronous()) {
+				// Sanity check, mixins should not ever be installed on other classes, but doesn't hurt to check
+				if (LoadedHookClass->MixinTargetClass == MixinTargetClass) {
+					MixinClasses.Add(LoadedHookClass);
+				}
+			}
+		}
+		if (MixinClasses.IsEmpty()) {
+			continue;
+		}
+		TArray<UClass*> AllClassesArray;
+		GetDerivedClasses(MixinTargetClass, AllClassesArray);
+		TSet<UClass*> AllClasses(AllClassesArray);
+		AllClasses.Add(MixinTargetClass);
+		for (AActor* Actor : Level->Actors) {
+			if (AllClasses.Contains(Actor->GetClass())) {
+				if (Actor->GetComponentByClass(UBlueprintMixinHostComponent::StaticClass()) != nullptr) {
+					continue;
+				}
+				UBlueprintMixinHostComponent* MixinHostComponent = NewObject<UBlueprintMixinHostComponent>(Actor, UBlueprintMixinHostComponent::StaticClass(), TEXT("TRANSIENT_MixinHostComponent"), RF_Transient);
+				if(!MixinHostComponent) {
+					UE_LOG(LogBlueprintHookManager, Error, TEXT("Failed to create mixin host component for level actor %s"), *GetFullNameSafe(Actor));
+					continue;
+				}
+				MixinHostComponent->MixinClasses = MixinClasses;
+				MixinHostComponent->RegisterComponent();
+			}
+		}
+	}
 }
 
 // Names of owner classes for hooked blueprint functions/SCS hooks, used to avoid relatively expensive sanitization pass on functions and SCS on classes that are not hooked
@@ -473,10 +530,25 @@ void UBlueprintHookManager::RegisterStaticHooks() {
 			if (SimpleConstructionScript && HookedBlueprintGeneratedClassNames.Contains(SimpleConstructionScript->GetOwnerClass()->GetFName())) {
 				SanitizeSimpleConstructionScript(SimpleConstructionScript);
 			}
+			UBlueprintGeneratedClass* BlueprintGeneratedClass = Cast<UBlueprintGeneratedClass>(InObject);
+			if (BlueprintGeneratedClass) {
+				SanitizeBlueprintGeneratedClass(BlueprintGeneratedClass);
+			}
 		});
 		// TODO: Add OnAssetDeleted callback here and to all other systems to delete stale hooks
 	}
 #endif
+	// The construction script is not invoked on level actors as they are simply loaded from the cooked asset, or duplicated for PIE
+	// So we need to manually add the mixin host component to such actors
+	if (FSatisfactoryModLoader::IsAssetHookingAllowed()) {
+		// TODO: This delegate is called after all save data for the actors in this level is loaded
+		// so mixins on these actors cannot have components with SaveGame properties
+		// Could not find any good delegate or hook that would fix this, maybe it can be addressed in the future 
+		FWorldDelegates::LevelAddedToWorld.AddLambda([](ULevel* Level, UWorld*) {
+			UBlueprintHookManager* HookManager = GEngine->GetEngineSubsystem<UBlueprintHookManager>();
+			HookManager->ApplyMixinsToLevelActors(Level);
+		});
+	}
 }
 
 void UBlueprintHookManager::SanitizeFunctionScriptCodeBeforeSave(UFunction* InFunction) {
@@ -499,6 +571,12 @@ void UBlueprintHookManager::SanitizeSimpleConstructionScript(USimpleConstruction
 			InSimpleConstructionScript->RemoveNode(TemporaryRootNode, false);
 		}
 	}
+}
+
+void UBlueprintHookManager::SanitizeBlueprintGeneratedClass(UBlueprintGeneratedClass* BlueprintGeneratedClass) {
+	BlueprintGeneratedClass->DynamicBindingObjects.RemoveAll([](TObjectPtr<UDynamicBlueprintBinding> Binding) {
+		return Binding->IsA<UMixinInputDelegateBinding>();
+	});
 }
 
 void UBlueprintHookManager::RegisterBlueprintHook(UGameInstance* OwnerGameInstance, UHookBlueprintGeneratedClass* HookBlueprintGeneratedClass) {
@@ -524,8 +602,22 @@ void UBlueprintHookManager::RegisterBlueprintHook(UGameInstance* OwnerGameInstan
 	for (const FBlueprintHookDefinition& HookDefinition : HookBlueprintGeneratedClass->HookDescriptors) {
 
 		// Make sure the hook target function in question is actually valid
-		if (HookDefinition.TargetFunction == nullptr || HookDefinition.HookFunction == nullptr || HookDefinition.TargetSpecifier == nullptr) {
-			UE_LOG(LogBlueprintHookManager, Error, TEXT("Blueprint hook %s has invalid data, blueprint might need to be recompiled."), *HookBlueprintGeneratedClass->GetFullName());
+		// It could be invalid due to broken data, removal of the target class/function, or being on a dedicated server (ex. widget blueprints not on servers)
+		if (HookDefinition.TargetFunction == nullptr) {
+			if (HookDefinition.HookFunction == nullptr) {
+				// If the hook function is also invalid, we probably have invalid data
+				UE_LOG(LogBlueprintHookManager, Error, TEXT("Blueprint hook asset %s has invalid data and one of its hooks can't be applied. Target structure may have changed or blueprint might need to be recompiled."), *HookBlueprintGeneratedClass->GetFullName());
+			} else {
+				// If the hook function is still valid, we are probably on a dedicated server where the target blueprint doesn't exist
+				// Short form HookFunction name since the function must be defined in the hook blueprint
+				UE_LOG(LogBlueprintHookManager, Warning, TEXT("Blueprint hook asset %s hook which would call hook implementation '%s' has invalid Target Function and can't be applied. Either the target structure has changed, or we're running on a dedicated server where the target doesn't exist (for example, widgets) in which case this isn't a problem."), *HookBlueprintGeneratedClass->GetFullName(), *HookDefinition.HookFunction->GetName());
+			}
+			continue;
+		}
+
+		// Verify other hook required data
+		if (HookDefinition.HookFunction == nullptr || HookDefinition.TargetSpecifier == nullptr) {
+			UE_LOG(LogBlueprintHookManager, Error, TEXT("Blueprint hook asset %s for target function %s has invalid data and can't be applied. Blueprint might need to be recompiled."), *HookBlueprintGeneratedClass->GetFullName(), *HookDefinition.TargetFunction->GetFullName());
 			continue;
 		}
 

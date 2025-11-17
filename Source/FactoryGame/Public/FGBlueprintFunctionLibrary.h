@@ -12,6 +12,7 @@
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "UI/FGPopupWidget.h"
 #include "Interfaces/IMessageSanitizerInterface.h"
+#include "FGLocalizationSettings.h"
 #include "FGBlueprintFunctionLibrary.generated.h"
 
 typedef UE::Online::FAccountId FAccountId;
@@ -193,6 +194,10 @@ public:
 	/** Static Helper to apply common customization data to mesh primitives ( does not work for Instances ) */
 	UFUNCTION( BlueprintCallable, Category = "Factory|Customization" )
 	static void ApplyCustomizationPrimitiveData( class AActor* actor, const FFactoryCustomizationData& customizationData, int32 colorSlotFallback = 0, class UMeshComponent* onlyApplyToComponent = nullptr, bool isLightweightTemporary = false  );
+
+	/** Static Helper to apply common customization data to mesh primitives ( does not work for Instances ) */
+	UFUNCTION( BlueprintCallable, Category = "Factory|Customization" )
+	static void ApplyCustomizationPrimitiveDataToComponent( class UMeshComponent* component, const FFactoryCustomizationData& customizationData, int32 colorSlotFallback = 0 );
 
 	/** Static Helper to apply default factory color data to actors that use the default factory material */
 	UFUNCTION( BlueprintCallable, Category = "Factory|Customization" )
@@ -1079,4 +1084,7 @@ public:
 	UFUNCTION( BlueprintCallable, Category = "Input" )
 	static void EnableAnalogUINavigation( bool bEnable );
 
+	//<FL> [BGR] check if a language is available on this platform
+	UFUNCTION( BlueprintCallable, Category = "Localization" )
+	static bool IsTranslationSupportedByPlatform(FLocalizationEntry LocalizationEntry);
 };
