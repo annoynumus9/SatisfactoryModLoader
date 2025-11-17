@@ -114,7 +114,8 @@ void FHookBlueprintEditor::AddBlueprintHookEditorToolbar(UToolMenu* InMenu) {
 
 void FHookBlueprintEditor::RegisterApplicationModes(const TArray<UBlueprint*>& InBlueprints, bool bShouldOpenInDefaultsMode, bool bNewlyCreated) {
 	if (GetBlueprintObj()) {
-		AddApplicationMode(FBlueprintEditorApplicationModes::StandardBlueprintEditorMode, MakeShareable(new FHookBlueprintEditorMode(SharedThis(this), BlueprintSupportsOverlayComponentTree())));
+		AddApplicationMode(FBlueprintEditorApplicationModes::StandardBlueprintEditorMode, MakeShareable(new FHookBlueprintEditorMode(SharedThis(this),
+			FBlueprintEditorApplicationModes::StandardBlueprintEditorMode, &FBlueprintEditorApplicationModes::GetLocalizedMode, BlueprintSupportsOverlayComponentTree())));
 		SetCurrentMode(FBlueprintEditorApplicationModes::StandardBlueprintEditorMode);
 	}
 }
@@ -337,8 +338,8 @@ FText FHookBlueprintViewportSummoner::GetTabToolTipText(const FWorkflowTabSpawnI
 	return LOCTEXT("HookViewportTabTooltip", "The Overlay Viewport shows the preview of the actor with Overlay Components applied to the Target Actor.");
 }
 
-FHookBlueprintEditorMode::FHookBlueprintEditorMode(const TSharedRef<FHookBlueprintEditor>& InHookBlueprintEditor, bool bAllowOverlayComponentTree) :
-	FBlueprintEditorApplicationMode(InHookBlueprintEditor, FBlueprintEditorApplicationModes::StandardBlueprintEditorMode, FBlueprintEditorApplicationModes::GetLocalizedMode, false, false) {
+FHookBlueprintEditorMode::FHookBlueprintEditorMode(const TSharedRef<FHookBlueprintEditor>& InHookBlueprintEditor, const FName& InModeName, FText(*GetLocalizedMode)(const FName), bool bAllowOverlayComponentTree) :
+	FBlueprintEditorApplicationMode(InHookBlueprintEditor, InModeName, GetLocalizedMode, false, false) {
 
 	// Register mode toolbar
 	if (UToolMenu* Toolbar = InHookBlueprintEditor->RegisterModeToolbarIfUnregistered(GetModeName())) {

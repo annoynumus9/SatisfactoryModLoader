@@ -97,10 +97,10 @@ struct FHookBlueprintViewportSummoner : FWorkflowTabFactory {
 	// End FWorkflowTabFactory interface
 };
 
-class FHookBlueprintEditorMode : public FBlueprintEditorApplicationMode
+class SMLEDITOR_API FHookBlueprintEditorMode : public FBlueprintEditorApplicationMode
 {
 public:
-	explicit FHookBlueprintEditorMode(const TSharedRef<FHookBlueprintEditor>& InHookBlueprintEditor, bool bAllowOverlayComponentTree);
+	explicit FHookBlueprintEditorMode(const TSharedRef<FHookBlueprintEditor>& InHookBlueprintEditor, const FName& InModeName, FText(*GetLocalizedMode)(const FName), bool bAllowOverlayComponentTree);
 protected:
 	// Set of spawnable tabs
 	FWorkflowAllowedTabSet TabFactories;

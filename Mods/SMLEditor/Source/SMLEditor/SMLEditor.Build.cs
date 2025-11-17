@@ -28,11 +28,13 @@ public class SMLEditor : ModuleRules
             "AssetDefinition",
             "ToolMenus",
             "EditorFramework",
+            "UMG",
         });
         
         PrivateDependencyModuleNames.AddRange(new[] {
 	        "PropertyEditor",
-	        "SubobjectDataInterface",
+	        "SubobjectDataInterface", 
+	        "UMGEditor",
         });
 
         //SML transitive dependencies

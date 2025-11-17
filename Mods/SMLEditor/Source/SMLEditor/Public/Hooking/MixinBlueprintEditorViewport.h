@@ -106,5 +106,5 @@ protected:
 	/** True if we are currently modifying object transform */
 	bool bIsModyingComponentTransform{false};
 	/** Nodes that we are currently modifying */
-	TArray<TSharedPtr<class FOverlayComponentData>> ComponentNodesBeingModified;
+	TArray<TSharedPtr<class FAbstractSubobjectTreeNode>> ComponentNodesBeingModified;
 };

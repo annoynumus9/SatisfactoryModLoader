@@ -310,12 +310,12 @@ void FMixinBlueprintEditorViewportClient::ProcessClick(FSceneView& View, HHitPro
 void FMixinBlueprintEditorViewportClient::TrackingStarted(const FInputEventState& InInputState, bool bIsDraggingWidget, bool bNudge) {
 	// Once we start dragging, remember which nodes we are dragging
 	if (!bIsModyingComponentTransform && bIsDraggingWidget) {
-		const TArray<TSharedPtr<FOverlayComponentData>> SelectedComponentNodes = BlueprintEditorPtr.Pin()->GetComponentTreeOverlayEditor()->GetSelectedNodes();
+		const TArray<TSharedPtr<FAbstractSubobjectTreeNode>> SelectedComponentNodes = BlueprintEditorPtr.Pin()->GetComponentTreeOverlayEditor()->GetSelectedNodes();
 
 		// Collect editable nodes that have visualization (e.g. scene components)
 		ComponentNodesBeingModified.Empty();
-		for (const TSharedPtr<FOverlayComponentData>& ComponentNode : SelectedComponentNodes) {
-			if (ComponentNode->IsNodeEditable() && Cast<USceneComponent>(ComponentNode->GetMutableActorComponentTemplate())) {
+		for (const TSharedPtr<FAbstractSubobjectTreeNode>& ComponentNode : SelectedComponentNodes) {
+			if (ComponentNode->IsNodeEditable() && Cast<USceneComponent>(ComponentNode->GetMutableObject())) {
 				ComponentNodesBeingModified.Add(ComponentNode);	
 			}
 		}
@@ -340,7 +340,7 @@ bool FMixinBlueprintEditorViewportClient::InputWidgetDelta(FViewport* CurrentVie
 	if (bIsModyingComponentTransform && PreviewActor) {
 
 		// Apply delta to the preview components
-		for (const TSharedPtr<FOverlayComponentData>& ComponentNode : ComponentNodesBeingModified) {
+		for (const TSharedPtr<FAbstractSubobjectTreeNode>& ComponentNode : ComponentNodesBeingModified) {
 			USceneComponent* PreviewSceneComponent = Cast<USceneComponent>(BlueprintEditorPtr.Pin()->GetComponentTreeOverlayEditor()->FindComponentInstanceInActor(PreviewActor, ComponentNode));
 
 			// Adjust the deltas as necessary
@@ -362,9 +362,9 @@ void FMixinBlueprintEditorViewportClient::TrackingStopped() {
 		if (PreviewActor != nullptr) {
 			const FScopedTransaction ScopedTransaction(NSLOCTEXT("UnrealEd", "ModifyComponents", "Modify Component(s)"));
 			
-			for (const TSharedPtr<FOverlayComponentData>& ComponentNode : ComponentNodesBeingModified) {
+			for (const TSharedPtr<FAbstractSubobjectTreeNode>& ComponentNode : ComponentNodesBeingModified) {
 				const USceneComponent* PreviewSceneComponent = Cast<USceneComponent>(BlueprintEditorPtr.Pin()->GetComponentTreeOverlayEditor()->FindComponentInstanceInActor(PreviewActor, ComponentNode));
-				USceneComponent* TemplateSceneComponent = Cast<USceneComponent>(ComponentNode->GetMutableActorComponentTemplate());
+				USceneComponent* TemplateSceneComponent = Cast<USceneComponent>(ComponentNode->GetMutableObject());
 
 				// Save the current template component into the transaction buffer and copy the transform changes from the template
 				if (PreviewSceneComponent && TemplateSceneComponent) {
@@ -383,7 +383,7 @@ void FMixinBlueprintEditorViewportClient::TrackingStopped() {
 }
 
 UE::Widget::EWidgetMode FMixinBlueprintEditorViewportClient::GetWidgetMode() const {
-	TArray<TSharedPtr<FOverlayComponentData>> SelectedComponentNodes = BlueprintEditorPtr.Pin()->GetComponentTreeOverlayEditor()->GetSelectedNodes();
+	TArray<TSharedPtr<FAbstractSubobjectTreeNode>> SelectedComponentNodes = BlueprintEditorPtr.Pin()->GetComponentTreeOverlayEditor()->GetSelectedNodes();
 	AActor* PreviewActor = GetPreviewActor();
 
 	// Return the local coord system of the first selected component node preview component
@@ -399,7 +399,7 @@ UE::Widget::EWidgetMode FMixinBlueprintEditorViewportClient::GetWidgetMode() con
 }
 
 FVector FMixinBlueprintEditorViewportClient::GetWidgetLocation() const {
-	TArray<TSharedPtr<FOverlayComponentData>> SelectedComponentNodes = BlueprintEditorPtr.Pin()->GetComponentTreeOverlayEditor()->GetSelectedNodes();
+	TArray<TSharedPtr<FAbstractSubobjectTreeNode>> SelectedComponentNodes = BlueprintEditorPtr.Pin()->GetComponentTreeOverlayEditor()->GetSelectedNodes();
 	AActor* PreviewActor = GetPreviewActor();
 
 	// Return the location of the first selected node preview actor component
@@ -414,7 +414,7 @@ FVector FMixinBlueprintEditorViewportClient::GetWidgetLocation() const {
 FMatrix FMixinBlueprintEditorViewportClient::GetWidgetCoordSystem() const {
 	// Attempt to retrieve the selected component instance if in local coordinate system
 	if (GetWidgetCoordSystemSpace() == COORD_Local) {
-		TArray<TSharedPtr<FOverlayComponentData>> SelectedComponentNodes = BlueprintEditorPtr.Pin()->GetComponentTreeOverlayEditor()->GetSelectedNodes();
+		TArray<TSharedPtr<FAbstractSubobjectTreeNode>> SelectedComponentNodes = BlueprintEditorPtr.Pin()->GetComponentTreeOverlayEditor()->GetSelectedNodes();
 		AActor* PreviewActor = GetPreviewActor();
 
 		// Return the local coord system of the first selected component node preview component

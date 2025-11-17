@@ -9,7 +9,6 @@
 #include "Styling/SlateIconFinder.h"
 #include "Widgets/SToolTip.h"
 #include "Widgets/Layout/SSeparator.h"
-#include "Widgets/Text/SInlineEditableTextBlock.h"
 #include "EdGraphSchema_K2.h"
 #include "EdGraphSchema_K2_Actions.h"
 #include "K2Node_VariableGet.h"
@@ -24,13 +23,13 @@
 
 #define LOCTEXT_NAMESPACE "SMLEditor"
 
-bool FOverlayComponentData::IsDirectlyAttachedToParent(const TSharedPtr<FOverlayComponentData>& InParentNode) const {
+bool FAbstractSubobjectTreeNode::IsDirectlyAttachedToParent(const TSharedPtr<FAbstractSubobjectTreeNode>& InParentNode) const {
 	return InParentNode && ParentNode == InParentNode;
 }
 
-bool FOverlayComponentData::IsAttachedToParent(const TSharedPtr<FOverlayComponentData>& InParentNode) const {
+bool FAbstractSubobjectTreeNode::IsAttachedToParent(const TSharedPtr<FAbstractSubobjectTreeNode>& InParentNode) const {
 	// Walk the parent chain of this node until we reach the given node or run out of nodes
-	TSharedPtr<FOverlayComponentData> CurrentNodeParent = ParentNode.Pin();
+	TSharedPtr<FAbstractSubobjectTreeNode> CurrentNodeParent = ParentNode.Pin();
 	while (CurrentNodeParent && CurrentNodeParent != InParentNode) {
 		CurrentNodeParent = CurrentNodeParent->ParentNode.Pin();
 	}
@@ -38,16 +37,16 @@ bool FOverlayComponentData::IsAttachedToParent(const TSharedPtr<FOverlayComponen
 	return CurrentNodeParent == InParentNode;
 }
 
-void FOverlayComponentData::GetChildrenNodes(TArray<TSharedPtr<FOverlayComponentData>>& OutChildrenNodes) const {
+void FAbstractSubobjectTreeNode::GetChildrenNodes(TArray<TSharedPtr<FAbstractSubobjectTreeNode>>& OutChildrenNodes) const {
 	OutChildrenNodes.Append(ChildNodes);
 }
 
-void FOverlayComponentData::ClearHierarchyData() {
+void FAbstractSubobjectTreeNode::ClearHierarchyData() {
 	ParentNode.Reset();
 	ChildNodes.Reset();
 }
 
-void FOverlayComponentData::AddChildNode(const TSharedPtr<FOverlayComponentData>& InNewChildNode) {
+void FAbstractSubobjectTreeNode::AddChildNode(const TSharedPtr<FAbstractSubobjectTreeNode>& InNewChildNode) {
 	ensure(InNewChildNode->ParentNode == nullptr);
 	InNewChildNode->ParentNode = SharedThis(this);
 	ChildNodes.Add(InNewChildNode);
@@ -55,7 +54,7 @@ void FOverlayComponentData::AddChildNode(const TSharedPtr<FOverlayComponentData>
 
 FImmutableSCSNodeComponentData::FImmutableSCSNodeComponentData(UBlueprintGeneratedClass* InActualOwnerClass, const USCS_Node* InDataNode) : ActualOwnerClass(InActualOwnerClass), DataNode(InDataNode) {}
 
-FText FImmutableSCSNodeComponentData::GetNameLabel() const {
+FText FImmutableSCSNodeComponentData::GetNameLabel(bool bIsEditingName) const {
 	if (const USCS_Node* PinnedDataNode = DataNode.Get()) {
 		return FText::FromName(PinnedDataNode->GetVariableName());
 	}
@@ -69,14 +68,14 @@ UClass* FImmutableSCSNodeComponentData::GetOwnerClass() const {
 	return nullptr;
 }
 
-FName FImmutableSCSNodeComponentData::GetComponentVariableName() const {
+FName FImmutableSCSNodeComponentData::GetSubobjectVariableName() const {
 	if (const USCS_Node* PinnedDataNode = DataNode.Get()) {
 		return PinnedDataNode->GetVariableName();
 	}
 	return NAME_None;
 }
 
-const UActorComponent* FImmutableSCSNodeComponentData::GetImmutableActorComponentTemplate() const {
+const UObject* FImmutableSCSNodeComponentData::GetImmutableObject() const {
 	// Return the actual component template from the derived class, not the one from the base class
 	if (UBlueprintGeneratedClass* PinnedActualOwnerClass = ActualOwnerClass.Get()) {
 		if (const USCS_Node* PinnedDataNode = DataNode.Get()) {
@@ -93,7 +92,7 @@ const USCS_Node* FImmutableSCSNodeComponentData::GetSCSNode() const {
 FImmutableNativeComponentData::FImmutableNativeComponentData(UClass* InOwnerClass, const UActorComponent* InActorComponentTemplate) : OwnerClass(InOwnerClass), ActorComponentTemplate(InActorComponentTemplate) {
 }
 
-FText FImmutableNativeComponentData::GetNameLabel() const {
+FText FImmutableNativeComponentData::GetNameLabel(bool bIsEditingName) const {
 	if (const UActorComponent* PinnedActorComponentTemplate = ActorComponentTemplate.Get()) {
 		return FText::FromName(PinnedActorComponentTemplate->GetFName());
 	}
@@ -104,7 +103,7 @@ UClass* FImmutableNativeComponentData::GetOwnerClass() const {
 	return OwnerClass.Get();
 }
 
-FName FImmutableNativeComponentData::GetComponentVariableName() const {
+FName FImmutableNativeComponentData::GetSubobjectVariableName() const {
 	if (const UActorComponent* PinnedActorComponentTemplate = ActorComponentTemplate.Get()) {
 		if (const UClass* PinnedOwnerClass = OwnerClass.Get()) {
 
@@ -133,13 +132,13 @@ FName FImmutableNativeComponentData::GetComponentVariableName() const {
 	return NAME_None;
 }
 
-const UActorComponent* FImmutableNativeComponentData::GetImmutableActorComponentTemplate() const {
+const UObject* FImmutableNativeComponentData::GetImmutableObject() const {
 	return ActorComponentTemplate.Get();
 }
 
 FMutableMixinComponentNodeData::FMutableMixinComponentNodeData(const UBlueprintMixinComponentNode* InDataNode) : DataNode(InDataNode) {}
 
-FText FMutableMixinComponentNodeData::GetNameLabel() const {
+FText FMutableMixinComponentNodeData::GetNameLabel(bool bIsEditingName) const {
 	if (const UBlueprintMixinComponentNode* PinnedDataNode = DataNode.Get()) {
 		return FText::FromName(PinnedDataNode->ComponentVariableName);
 	}
@@ -153,15 +152,15 @@ UClass* FMutableMixinComponentNodeData::GetOwnerClass() const {
 	return nullptr;
 }
 
-FName FMutableMixinComponentNodeData::GetComponentVariableName() const {
+FName FMutableMixinComponentNodeData::GetSubobjectVariableName() const {
 	if (const UBlueprintMixinComponentNode* PinnedDataNode = DataNode.Get()) {
 		return PinnedDataNode->ComponentVariableName;
 	}
 	return NAME_None;
 }
 
-const UActorComponent* FMutableMixinComponentNodeData::GetImmutableActorComponentTemplate() const {
-	return GetMutableActorComponentTemplate();
+const UObject* FMutableMixinComponentNodeData::GetImmutableObject() const {
+	return GetMutableObject();
 }
 
 bool FMutableMixinComponentNodeData::CheckValidRename(const FText& InNewComponentName, FText& OutErrorMessage) const {
@@ -202,7 +201,7 @@ bool FMutableMixinComponentNodeData::CheckValidRename(const FText& InNewComponen
 	return false;
 }
 
-UActorComponent* FMutableMixinComponentNodeData::GetMutableActorComponentTemplate() const {
+UObject* FMutableMixinComponentNodeData::GetMutableObject() const {
 	if (const UBlueprintMixinComponentNode* PinnedDataNode = DataNode.Get()) {
 		return PinnedDataNode->ComponentTemplate;
 	}
@@ -213,118 +212,22 @@ const UBlueprintMixinComponentNode* FMutableMixinComponentNodeData::GetComponent
 	return DataNode.Get();
 }
 
-void SOverlayComponentTreeView::Construct(const FArguments& InArgs, const TSharedPtr<SOverlayComponentTreeEditor>& InOwnerTreeEditor) {
-	OwnerTreeEditor = InOwnerTreeEditor;
-	STreeView::Construct(InArgs);
-}
-
-FReply SOverlayComponentTreeView::OnDragOver(const FGeometry& MyGeometry, const FDragDropEvent& DragDropEvent) {
-	const TSharedPtr<FDragDropOperation> Operation = DragDropEvent.GetOperation();
-
-	// Allow dragging over assets of the supported class and component types
-	if (Operation.IsValid() && (Operation->IsOfType<FExternalDragOperation>() || Operation->IsOfType<FAssetDragDropOp>())) {
-		const FReply ParentReply = AssetUtil::CanHandleAssetDrag(DragDropEvent);
-		if (!ParentReply.IsEventHandled() && Operation->IsOfType<FAssetDragDropOp>()) {
-			const TSharedPtr<FAssetDragDropOp> AssetDragDropOp = StaticCastSharedPtr<FAssetDragDropOp>(Operation);
-			if (ContainsAnyClassAssets(AssetDragDropOp)) {
-				return FReply::Handled();
-			}
-		}
-		return ParentReply;
-	}
-	return FReply::Unhandled();
-}
-
-bool SOverlayComponentTreeView::ContainsAnyClassAssets(const TSharedPtr<FAssetDragDropOp>& AssetDragNDropOp) {
-	for (const FAssetData& AssetData : AssetDragNDropOp->GetAssets()) {
-		if (const UClass* AssetClass = AssetData.GetClass()) {
-			if (AssetClass->IsChildOf(UClass::StaticClass())) {
-				return true;
-			}
-		}
-	}
-	return false;
-}
-
-FReply SOverlayComponentTreeView::OnDrop(const FGeometry& MyGeometry, const FDragDropEvent& DragDropEvent) {
-	if (const TSharedPtr<SOverlayComponentTreeEditor> OwnerEditor = OwnerTreeEditor.Pin()) {
-		return OwnerEditor->TryHandleAssetDragNDropOperation(DragDropEvent);
-	}
-	return FReply::Unhandled();
-}
-
-void SOverlayComponentTreeViewRowWidget::Construct(const FArguments&, TSharedPtr<SOverlayComponentTreeEditor> InOwnerTreeOverlay, const TSharedPtr<FOverlayComponentData> InNodePtr, TSharedPtr<STableViewBase> InOwnerTableView) {
-	OwnerTreeOverlay = InOwnerTreeOverlay;
-	ComponentData = InNodePtr;
-
-	const FSuperRowType::FArguments Args = FSuperRowType::FArguments()
-		.Style(&FAppStyle::Get().GetWidgetStyle<FTableRowStyle>("SceneOutliner.TableViewRow"))
+void SOverlayComponentTreeViewRowWidget::Construct(const FArguments&, TSharedPtr<SOverlayComponentTreeEditor> InOwnerEditor, const TSharedPtr<FAbstractSubobjectTreeNode> InNodePtr, TSharedPtr<STableViewBase> InOwnerTableView) {
+	SAbstractSubobjectTreeRowWidget::Construct(SAbstractSubobjectTreeRowWidget::FArguments().ShowIconBrush(true)
+		.TableRowStyle(&FAppStyle::Get().GetWidgetStyle<FTableRowStyle>("SceneOutliner.TableViewRow"))
 		.Padding(FMargin(0.0f, 4.0f, 0.0f, 4.0f))
-		.OnDragDetected(this, &SOverlayComponentTreeViewRowWidget::HandleOnDragDetected)
-		.OnDragEnter(this, &SOverlayComponentTreeViewRowWidget::HandleOnDragEnter)
-		.OnDragLeave(this, &SOverlayComponentTreeViewRowWidget::HandleOnDragLeave)
-		.OnCanAcceptDrop(this, &SOverlayComponentTreeViewRowWidget::HandleOnCanAcceptDrop)
-		.OnAcceptDrop(this, &SOverlayComponentTreeViewRowWidget::HandleOnAcceptDrop);
-
-	SMultiColumnTableRow::Construct(Args, InOwnerTableView.ToSharedRef());
-}
-
-TSharedRef<SWidget> SOverlayComponentTreeViewRowWidget::GenerateWidgetForColumn(const FName& ColumnName) {
-	// Component name column
-	if (ColumnName == TEXT("ComponentName")) {
-		return SNew(SHorizontalBox)
-		.ToolTip(CreateTooltipWidget())
-		+SHorizontalBox::Slot().Padding(FMargin(0.0f, 0.0f, 0.0f, 0.0f)).AutoWidth().VAlign(VAlign_Center) [
-			SNew(SExpanderArrow, SharedThis(this))
-			.Visibility(EVisibility::Visible)
-		]
-		+SHorizontalBox::Slot().Padding(FMargin(0.0f, 0.0f, 0.0f, 0.0f)).AutoWidth().VAlign(VAlign_Center) [
-			SNew(SImage)
-			.Image(GetIconBrush())
-			.ColorAndOpacity(FSlateColor::UseForeground())
-		]
-		+SHorizontalBox::Slot().VAlign(VAlign_Center).HAlign(HAlign_Left).AutoWidth().Padding(6.f, 0.0f, 0.0f, 0.0f) [
-			SAssignNew(EditableNameTextBlock, SInlineEditableTextBlock)
-			.Text(this, &SOverlayComponentTreeViewRowWidget::GetNameLabel)
-			.ColorAndOpacity(ComponentData->IsNodeEditable() ? FSlateColor(FLinearColor(0.25f, 0.72f, 0.1f)) : FSlateColor::UseForeground())
-			.OnVerifyTextChanged(this, &SOverlayComponentTreeViewRowWidget::OnNameTextVerifyChanged)
-			.OnTextCommitted(this, &SOverlayComponentTreeViewRowWidget::OnNameTextCommit)
-			.IsSelected(this, &SOverlayComponentTreeViewRowWidget::IsSelectedExclusively)
-			.IsReadOnly(!ComponentData->IsNodeEditable())
-		];
-	}
-	return SNew(STextBlock).Text(LOCTEXT("UnknownColumn", "Unknown Column"));
-}
-
-void SOverlayComponentTreeViewRowWidget::StartEditingComponentName() {
-	if (EditableNameTextBlock) {
-		EditableNameTextBlock->EnterEditingMode();
-	}
-}
-
-FText SOverlayComponentTreeViewRowWidget::GetNameLabel() const {
-	return ComponentData->GetNameLabel();
-}
-
-bool SOverlayComponentTreeViewRowWidget::OnNameTextVerifyChanged(const FText& InNewText, FText& OutErrorMessage) {
-	return ComponentData->CheckValidRename(InNewText, OutErrorMessage);
-}
-
-void SOverlayComponentTreeViewRowWidget::OnNameTextCommit(const FText& InNewName, ETextCommit::Type) {
-	if (const TSharedPtr<SOverlayComponentTreeEditor> PinnedOwnerTreeEditor = OwnerTreeOverlay.Pin()) {
-		PinnedOwnerTreeEditor->OnUpdateComponentNameAction(ComponentData, InNewName);	
-	}
+		.IconPadding(FMargin(0.0f, 0.0f, 6.0f, 0.0f)), InOwnerEditor, InNodePtr, InOwnerTableView);
 }
 
 const FSlateBrush* SOverlayComponentTreeViewRowWidget::GetIconBrush() const {
-	if (const UActorComponent* SourceActorComponent = ComponentData->GetImmutableActorComponentTemplate()) {
+	if (const UActorComponent* SourceActorComponent = Cast<UActorComponent>(SubobjectData->GetImmutableObject())) {
 		return FSlateIconFinder::FindIconBrushForClass(SourceActorComponent->GetClass(), TEXT("SCS.Component"));
 	}
 	return FAppStyle::GetBrush("SCS.NativeComponent");
 }
 
 EVisibility SOverlayComponentTreeViewRowWidget::GetAssetVisibility() const {
-	if (const UActorComponent* SourceActorComponent = ComponentData->GetImmutableActorComponentTemplate()) {
+	if (const UActorComponent* SourceActorComponent = Cast<UActorComponent>(SubobjectData->GetImmutableObject())) {
 		// This might not be safe (to cast away const-ness like this), but asset broker must never modify the original component
 		if (FComponentAssetBrokerage::SupportsAssets(const_cast<UActorComponent*>(SourceActorComponent))) {
 			return EVisibility::Visible;
@@ -334,7 +237,7 @@ EVisibility SOverlayComponentTreeViewRowWidget::GetAssetVisibility() const {
 }
 
 FText SOverlayComponentTreeViewRowWidget::GetAssetName() const {
-	if (const UActorComponent* SourceActorComponent = ComponentData->GetImmutableActorComponentTemplate()) {
+	if (const UActorComponent* SourceActorComponent = Cast<UActorComponent>(SubobjectData->GetImmutableObject())) {
 		// This might not be safe (to cast away const-ness like this), but asset broker must never modify the original component
 		if (const UObject* Asset = FComponentAssetBrokerage::GetAssetFromComponent(const_cast<UActorComponent*>(SourceActorComponent))) {
 			return FText::FromString(Asset->GetName());
@@ -344,7 +247,7 @@ FText SOverlayComponentTreeViewRowWidget::GetAssetName() const {
 }
 
 FText SOverlayComponentTreeViewRowWidget::GetAssetPath() const {
-	if (const UActorComponent* SourceActorComponent = ComponentData->GetImmutableActorComponentTemplate()) {
+	if (const UActorComponent* SourceActorComponent = Cast<UActorComponent>(SubobjectData->GetImmutableObject())) {
 		// This might not be safe (to cast away const-ness like this), but asset broker must never modify the original component
 		if (const UObject* Asset = FComponentAssetBrokerage::GetAssetFromComponent(const_cast<UActorComponent*>(SourceActorComponent))) {
 			return FText::FromString(Asset->GetPathName());
@@ -354,7 +257,7 @@ FText SOverlayComponentTreeViewRowWidget::GetAssetPath() const {
 }
 
 FText SOverlayComponentTreeViewRowWidget::GetMobilityToolTipText() const {
-	if (const USceneComponent* SourceSceneComponent = Cast<USceneComponent>(ComponentData->GetImmutableActorComponentTemplate())) {
+	if (const USceneComponent* SourceSceneComponent = Cast<USceneComponent>(SubobjectData->GetImmutableObject())) {
 		if (SourceSceneComponent->Mobility == EComponentMobility::Movable) {
 			return LOCTEXT("MovableMobilityTooltip", "Movable");
 		}
@@ -369,7 +272,7 @@ FText SOverlayComponentTreeViewRowWidget::GetMobilityToolTipText() const {
 }
 
 FSlateBrush const* SOverlayComponentTreeViewRowWidget::GetMobilityIconImage() const {
-	if (const USceneComponent* SourceSceneComponent = Cast<USceneComponent>(ComponentData->GetImmutableActorComponentTemplate())) {
+	if (const USceneComponent* SourceSceneComponent = Cast<USceneComponent>(SubobjectData->GetImmutableObject())) {
 		if (SourceSceneComponent->Mobility == EComponentMobility::Movable) {
 			return FAppStyle::GetBrush(TEXT("ClassIcon.MovableMobilityIcon"));
 		}
@@ -381,7 +284,7 @@ FSlateBrush const* SOverlayComponentTreeViewRowWidget::GetMobilityIconImage() co
 }
 
 FText SOverlayComponentTreeViewRowWidget::GetComponentEditorOnlyTooltipText() const {
-	const UActorComponent* SourceComponent = ComponentData->GetImmutableActorComponentTemplate();
+	const UActorComponent* SourceComponent = Cast<UActorComponent>(SubobjectData->GetImmutableObject());
 	if (SourceComponent != nullptr && SourceComponent->bIsEditorOnly) {
 		return LOCTEXT("ComponentEditorOnly_True", "True");
 	}
@@ -389,7 +292,7 @@ FText SOverlayComponentTreeViewRowWidget::GetComponentEditorOnlyTooltipText() co
 }
 
 FText SOverlayComponentTreeViewRowWidget::GetComponentEditableTooltipText() const {
-	return ComponentData->IsNodeEditable() ? LOCTEXT("ComponentEditableTooltip_Editable", "Editable (Overlay Component)") :
+	return SubobjectData->IsNodeEditable() ? LOCTEXT("ComponentEditableTooltip_Editable", "Editable (Overlay Component)") :
 		LOCTEXT("ComponentEditableTooltip_Immutable", "Inherited (Target Component)");
 }
 
@@ -413,7 +316,7 @@ void SOverlayComponentTooltipBlock::Construct(const FArguments& InArgs) {
 }
 
 TSharedRef<SToolTip> SOverlayComponentTreeViewRowWidget::CreateTooltipWidget() const {
-	const UActorComponent* ComponentTemplate = ComponentData->GetImmutableActorComponentTemplate();
+	const UActorComponent* ComponentTemplate = Cast<UActorComponent>(SubobjectData->GetImmutableObject());
 	const TSharedRef<SVerticalBox> InfoBox = SNew(SVerticalBox);
 
 	// Add the tooltip for the component class
@@ -493,142 +396,18 @@ TSharedRef<SToolTip> SOverlayComponentTreeViewRowWidget::CreateTooltipWidget() c
 }
 
 FText SOverlayComponentTreeViewRowWidget::GetTooltipText() const {
-	const UActorComponent* ComponentTemplate = ComponentData->GetImmutableActorComponentTemplate();
+	const UActorComponent* ComponentTemplate = Cast<UActorComponent>(SubobjectData->GetImmutableObject());
 	const UClass* Class = ComponentTemplate ? ComponentTemplate->GetClass() : nullptr;
 	const FText ClassDisplayName = FBlueprintEditorUtils::GetFriendlyClassDisplayName(Class);
 
-	return FText::Format(LOCTEXT("ComponentTooltip", "{0} ({1})"), ClassDisplayName, ComponentData->GetNameLabel());
+	return FText::Format(LOCTEXT("ComponentTooltip", "{0} ({1})"), ClassDisplayName, SubobjectData->GetNameLabel(false));
 }
 
-void SOverlayComponentTreeViewRowWidget::HandleOnDragEnter(const FDragDropEvent& DragDropEvent) {
-	const TSharedPtr<FDragDropOperation> Operation = DragDropEvent.GetOperation();
-	const TSharedPtr<SOverlayComponentTreeEditor> PinnedOwnerTreeEditor = OwnerTreeOverlay.Pin();
-
-	// Exit early if operation or our owner are not valid
-	if (!Operation.IsValid() || !PinnedOwnerTreeEditor.IsValid()) {
-		return;
-	}
-
-	// If this is a drag and drop action from another node, evaluate its payload to determine which action dropping it on this node would result in
-	if (const TSharedPtr<FOverlayComponentTreeRowDragDropOp> DragRowOp = DragDropEvent.GetOperationAs<FOverlayComponentTreeRowDragDropOp>()) {
-		// Evaluate the selected nodes, and stop once one of them fails to attach
-		FText FeedbackMessage;
-		for (const TSharedPtr<FOverlayComponentData>& SelectedNodeData : DragRowOp->SourceNodes) {
-			DragRowOp->PendingDropAction = CheckCanAttachSelectedNodeToNode(SelectedNodeData, ComponentData, FeedbackMessage);
-			if (DragRowOp->PendingDropAction == FOverlayComponentTreeRowDragDropOp::DropAction_None) {
-				break;
-			}
-		}
-
-		// If we have a pending operation, the drop can be performed, otherwise, it is not allowed
-		const FSlateBrush* StatusSymbol = DragRowOp->PendingDropAction != FOverlayComponentTreeRowDragDropOp::DropAction_None
-				? FAppStyle::GetBrush(TEXT("Graph.ConnectorFeedback.OK"))
-				: FAppStyle::GetBrush(TEXT("Graph.ConnectorFeedback.Error"));
-		if (FeedbackMessage.IsEmpty()) {
-			DragRowOp->SetFeedbackMessage(nullptr);
-		} else {
-			DragRowOp->SetSimpleFeedbackMessage(StatusSymbol, FLinearColor::White, FeedbackMessage);
-		}
-	}
-	// Let the tree handle the external drag operations and asset dragging
-	else if (Operation->IsOfType<FExternalDragOperation>() || Operation->IsOfType<FAssetDragDropOp>()) {
-		if (const TSharedPtr<SOverlayComponentTreeView>& ComponentTree = PinnedOwnerTreeEditor->GetComponentTree()) {
-			ComponentTree->OnDragEnter(FGeometry(), DragDropEvent);
-		}
-	}
-}
-
-void SOverlayComponentTreeViewRowWidget::HandleOnDragLeave(const FDragDropEvent& DragDropEvent) {
-	// Cleanup the pending drop action once the operation leaves this widget
-	if (const TSharedPtr<FOverlayComponentTreeRowDragDropOp> DragRowOp = DragDropEvent.GetOperationAs<FOverlayComponentTreeRowDragDropOp>()) {
-		const TSharedPtr<SWidget> NoWidget;
-		DragRowOp->SetFeedbackMessage(NoWidget);
-		DragRowOp->PendingDropAction = FOverlayComponentTreeRowDragDropOp::DropAction_None;
-	}
-}
-
-FReply SOverlayComponentTreeViewRowWidget::HandleOnDragDetected(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) {
-	const TSharedPtr<SOverlayComponentTreeEditor> PinnedOwnerTreeOverlay = OwnerTreeOverlay.Pin();
-	if (MouseEvent.IsMouseButtonDown(EKeys::LeftMouseButton) && PinnedOwnerTreeOverlay.IsValid() && PinnedOwnerTreeOverlay->IsEditingAllowed()) {
-		TArray<TSharedPtr<FOverlayComponentData>> SelectedNodes = PinnedOwnerTreeOverlay->GetSelectedNodes();
-		if (SelectedNodes.Num() == 0) {
-			SelectedNodes.Add(ComponentData);
-		}
-
-		// Begin the drag and drop operation with no set action and selected nodes as payload
-		const TSharedRef<FOverlayComponentTreeRowDragDropOp> Operation = FOverlayComponentTreeRowDragDropOp::Create(SelectedNodes);
-		return FReply::Handled().BeginDragDrop(Operation);
-    }
-	return FReply::Unhandled();
-}
-
-TOptional<EItemDropZone> SOverlayComponentTreeViewRowWidget::HandleOnCanAcceptDrop(const FDragDropEvent& DragDropEvent, EItemDropZone DropZone, const TSharedPtr<FOverlayComponentData> TargetItem) {
-	if (const TSharedPtr<FDragDropOperation> Operation = DragDropEvent.GetOperation()) {
-		// If we have a valid drag and drop operation set for this action, drop it onto this item
-		if (Operation->IsOfType<FOverlayComponentTreeRowDragDropOp>()) {
-			const TSharedPtr<FOverlayComponentTreeRowDragDropOp> DragRowOp = StaticCastSharedPtr<FOverlayComponentTreeRowDragDropOp>(Operation);
-			if (DragRowOp->PendingDropAction != FOverlayComponentTreeRowDragDropOp::DropAction_None) {
-				return EItemDropZone::OntoItem;
-			}
-		}
-		// Assume that component overlay tree will handle all the external and asset drag operations
-		else if (Operation->IsOfType<FExternalDragOperation>() || Operation->IsOfType<FAssetDragDropOp>()) {
-			return EItemDropZone::OntoItem;
-		}
-	}
-	return TOptional<EItemDropZone>();
-}
-
-FReply SOverlayComponentTreeViewRowWidget::HandleOnAcceptDrop(const FDragDropEvent& DragDropEvent, EItemDropZone DropZone, TSharedPtr<FOverlayComponentData> TargetItem) {
-	const TSharedPtr<FDragDropOperation> Operation = DragDropEvent.GetOperation();
-	const TSharedPtr<SOverlayComponentTreeEditor> PinnedTreeEditor = OwnerTreeOverlay.Pin();
-	if (!Operation.IsValid() || !PinnedTreeEditor.IsValid()) {
-		return FReply::Handled();
-	}
-
-	// If this is a component drag and drop operation with a defined action, forward it to the tree overlay to perform the operation in question
-	if (Operation->IsOfType<FOverlayComponentTreeRowDragDropOp>()) {
-		const TSharedPtr<FOverlayComponentTreeRowDragDropOp> DragRowOp = StaticCastSharedPtr<FOverlayComponentTreeRowDragDropOp>(Operation);	
-		switch(DragRowOp->PendingDropAction) {
-			case FOverlayComponentTreeRowDragDropOp::DropAction_AttachTo: PinnedTreeEditor->OnAttachToDropAction(ComponentData, DragRowOp->SourceNodes); break;
-			case FOverlayComponentTreeRowDragDropOp::DropAction_DetachFrom: PinnedTreeEditor->OnDetachFromDropAction(DragRowOp->SourceNodes); break;
-			default: break;
-		}
-	}
-	// Let the component tree handle the external drag operations and asset dragging
-	else if (Operation->IsOfType<FExternalDragOperation>() || Operation->IsOfType<FAssetDragDropOp>()) {
-		if (const TSharedPtr<SOverlayComponentTreeView>& ComponentTree = PinnedTreeEditor->GetComponentTree()) {
-			ComponentTree->OnDrop(FGeometry(), DragDropEvent);
-		}
-	}
-	return FReply::Handled();
-}
-
-void SOverlayComponentTreeSeparatorRowWidget::Construct(const FArguments&, const TSharedPtr<STableViewBase>& InOwnerTableView) {
-	const FSuperRowType::FArguments Args = FSuperRowType::FArguments()
-		.Style(&FAppStyle::Get().GetWidgetStyle<FTableRowStyle>("TableView.NoHoverTableRow"))
-		.Padding(FMargin(0.0f, 4.0f, 0.0f, 4.0f))
-		.ShowSelection(false);
-	SMultiColumnTableRow::Construct(Args, InOwnerTableView.ToSharedRef());
-}
-
-TSharedRef<SWidget> SOverlayComponentTreeSeparatorRowWidget::GenerateWidgetForColumn(const FName& ColumnName) {
-	return SNew(SBox).Padding(1.0f) [
-		SNew(SSeparator)
-		.SeparatorImage(FAppStyle::Get().GetBrush("Menu.Separator"))
-		.Thickness(1.0f)
-	];
-}
-
-void SOverlayComponentTreeEditor::Construct(const FArguments& InArgs, const TSharedPtr<FHookBlueprintEditor>& InOwnerBlueprintEditor) {
+void SOverlayComponentTreeEditor::Construct(const FArguments&, const TSharedPtr<FHookBlueprintEditor>& InOwnerBlueprintEditor) {
 	OwnerBlueprintEditor = InOwnerBlueprintEditor;
+	SAbstractSubobjectTreeEditor::Construct(SAbstractSubobjectTreeEditor::FArguments().ItemHeight(24.0f));
 
-	RegisterEditorCommands();
-	RefreshComponentTreeFromBlueprint();
-
-	// Create header row to generate the tree hierarchy
-	const TSharedPtr<SHeaderRow> HeaderRow = SNew(SHeaderRow)
-		+SHeaderRow::Column(TEXT("ComponentName")).DefaultLabel(LOCTEXT("OverlayTreeHeaderColumn_ComponentName", "Component")).FillWidth(4.0f);
+	SubobjectTreeView->SetToolTipText(LOCTEXT("DropAssetToAddComponent", "Drop asset here to add a component."));
 
 	ChildSlot [
 		SNew(SVerticalBox)
@@ -648,57 +427,26 @@ void SOverlayComponentTreeEditor::Construct(const FArguments& InArgs, const TSha
 			SNew(SBorder)
 			.BorderImage(FAppStyle::Get().GetBrush("SCSEditor.Background"))
 			.Padding(4.0f) [
-				SAssignNew(ComponentTreeView, SOverlayComponentTreeView, SharedThis(this))
-				.ToolTipText(LOCTEXT("DropAssetToAddComponent", "Drop asset here to add a component."))
-				.TreeItemsSource(&RootNodes)
-				.SelectionMode(ESelectionMode::Multi)
-				.OnGenerateRow(this, &SOverlayComponentTreeEditor::MakeTableRowWidget)
-				.OnGetChildren(this, &SOverlayComponentTreeEditor::OnGetChildrenForTree)
-				.OnSetExpansionRecursive(this, &SOverlayComponentTreeEditor::SetItemExpansionRecursive)
-				.OnSelectionChanged(this, &SOverlayComponentTreeEditor::OnTreeSelectionChanged)
-				// TODO: Create context menu later.
-				//.OnContextMenuOpening(this, &SOverlayComponentTreeEditor::CreateContextMenu)
-				.OnItemScrolledIntoView(this, &SOverlayComponentTreeEditor::OnItemScrolledIntoView)
-				.ClearSelectionOnClick(true)
-				.HighlightParentNodesForSelection(true)
-				.ItemHeight(24)
-				.HeaderRow(HeaderRow)
+				SubobjectTreeView.ToSharedRef()
 			]
 		]
 	];
-	HeaderRow->SetVisibility(EVisibility::Collapsed);
 
 	// Expand all default nodes in the current tree
-	for (const TSharedPtr<FOverlayComponentData>& ComponentNode : AllNodes) {
-		ComponentTreeView->SetItemExpansion(ComponentNode, true);
+	for (const TSharedPtr<FAbstractSubobjectTreeNode>& ComponentNode : AllNodes) {
+		SubobjectTreeView->SetItemExpansion(ComponentNode, true);
 	}
-}
-
-FReply SOverlayComponentTreeEditor::OnKeyDown(const FGeometry& MyGeometry, const FKeyEvent& InKeyEvent) {
-	// Process generic keyboard actions from commands (like copy and paste)
-	if (CommandList->ProcessCommandBindings(InKeyEvent)) {
-		return FReply::Handled();
-	}
-	return FReply::Unhandled();
 }
 
 void SOverlayComponentTreeEditor::RegisterEditorCommands() {
-	CommandList = MakeShared<FUICommandList>();
+	SAbstractSubobjectTreeEditor::RegisterEditorCommands();
 
-	CommandList->MapAction(FGenericCommands::Get().Delete,
-		FUIAction(FExecuteAction::CreateSP(this, &SOverlayComponentTreeEditor::OnDeleteNodes),
-		FCanExecuteAction::CreateSP(this, &SOverlayComponentTreeEditor::CanDeleteNodes))
-	);
-	CommandList->MapAction(FGenericCommands::Get().Rename,
-		FUIAction(FExecuteAction::CreateSP(this, &SOverlayComponentTreeEditor::OnRenameComponent),
-		FCanExecuteAction::CreateSP(this, &SOverlayComponentTreeEditor::CanRenameComponent))
-	);
 	CommandList->MapAction(FGraphEditorCommands::Get().GetFindReferences(),
 		FUIAction(FExecuteAction::CreateSP(this, &SOverlayComponentTreeEditor::OnFindReferences))
 	);
 }
 
-void SOverlayComponentTreeEditor::RefreshComponentTreeFromBlueprint() {
+void SOverlayComponentTreeEditor::RefreshSubobjectTreeFromDataSource() {
 	// Retrieve the current hook blueprint we are editing
 	const UHookBlueprint* BlueprintObject = nullptr;
 	if (const TSharedPtr<FHookBlueprintEditor> BlueprintEditor = OwnerBlueprintEditor.Pin()) {
@@ -706,11 +454,11 @@ void SOverlayComponentTreeEditor::RefreshComponentTreeFromBlueprint() {
 	}
 
 	// Cache a list of all nodes that we had prior to this point
-	const TArray<TSharedPtr<FOverlayComponentData>> AllNodesOld = AllNodes;
-	const TMap<TWeakObjectPtr<const UObject>, TSharedPtr<FOverlayComponentData>> OldObjectToComponentLookup = ObjectToComponentDataCache;
+	const TArray<TSharedPtr<FAbstractSubobjectTreeNode>> AllNodesOld = AllNodes;
+	const TMap<TWeakObjectPtr<const UObject>, TSharedPtr<FAbstractSubobjectTreeNode>> OldObjectToComponentLookup = ObjectToComponentDataCache;
 	
 	// Wipe hierarchy data from the nodes that we might want to keep around
-	for (const TSharedPtr<FOverlayComponentData>& OldNodeObject : AllNodesOld) {
+	for (const TSharedPtr<FAbstractSubobjectTreeNode>& OldNodeObject : AllNodesOld) {
 		OldNodeObject->ClearHierarchyData();
 	}
 
@@ -732,12 +480,12 @@ void SOverlayComponentTreeEditor::RefreshComponentTreeFromBlueprint() {
 	}
 	
 	// Create nodes for native actor components
-	TMap<FName, TSharedPtr<FOverlayComponentData>> NativeComponentNameToComponentData;
+	TMap<FName, TSharedPtr<FAbstractSubobjectTreeNode>> NativeComponentNameToComponentData;
 	for (const UActorComponent* NativeActorComponent : DefaultNativeComponents) {
-		TSharedPtr<FOverlayComponentData> NodeComponentData;
+		TSharedPtr<FAbstractSubobjectTreeNode> NodeComponentData;
 
 		// Attempt to find an existing component node for this node
-		if (const TSharedPtr<FOverlayComponentData>* ExistingComponentData = OldObjectToComponentLookup.Find(NativeActorComponent)) {
+		if (const TSharedPtr<FAbstractSubobjectTreeNode>* ExistingComponentData = OldObjectToComponentLookup.Find(NativeActorComponent)) {
 			NodeComponentData = *ExistingComponentData;
 		} else {
 			// Create a new component data otherwise
@@ -751,12 +499,12 @@ void SOverlayComponentTreeEditor::RefreshComponentTreeFromBlueprint() {
 
 	// Setup attachments between native components. Native components will never be attached to SCS components
 	for (const UActorComponent* NativeActorComponent : DefaultNativeComponents) {
-		const TSharedPtr<FOverlayComponentData> NativeComponentData = ObjectToComponentDataCache.FindChecked(NativeActorComponent); 
+		const TSharedPtr<FAbstractSubobjectTreeNode> NativeComponentData = ObjectToComponentDataCache.FindChecked(NativeActorComponent); 
 
 		// If this is a scene component that has an attachment parent we have registered, add it as a child to that component
 		const USceneComponent* NativeSceneComponent = Cast<USceneComponent>(NativeActorComponent);
 		if (NativeSceneComponent != nullptr && NativeSceneComponent->GetAttachParent() && ObjectToComponentDataCache.Contains(NativeSceneComponent->GetAttachParent())) {
-			const TSharedPtr<FOverlayComponentData> ParentComponentData = ObjectToComponentDataCache.FindChecked(NativeSceneComponent->GetAttachParent());
+			const TSharedPtr<FAbstractSubobjectTreeNode> ParentComponentData = ObjectToComponentDataCache.FindChecked(NativeSceneComponent->GetAttachParent());
 			ParentComponentData->AddChildNode(NativeComponentData);
 		} else {
 			// Add this component to the root set otherwise since it has no attachment parent
@@ -776,15 +524,15 @@ void SOverlayComponentTreeEditor::RefreshComponentTreeFromBlueprint() {
 	Algo::Reverse(SimpleConstructionScriptHierarchy);
 	
 	// Create nodes or reuse existing nodes from the SCS
-	TMap<TPair<FName, FName>, TSharedPtr<FOverlayComponentData>> BlueprintSCSComponentKeyToComponentData;
+	TMap<TPair<FName, FName>, TSharedPtr<FAbstractSubobjectTreeNode>> BlueprintSCSComponentKeyToComponentData;
 	for (const USimpleConstructionScript* SimpleConstructionScript : SimpleConstructionScriptHierarchy) {
 
 		// Create component data for each component node in the construction script
 		for (const USCS_Node* ComponentTreeNode : SimpleConstructionScript->GetAllNodes()) {
-			TSharedPtr<FOverlayComponentData> NodeComponentData;
+			TSharedPtr<FAbstractSubobjectTreeNode> NodeComponentData;
 
 			// Attempt to find an existing component node for this node
-			if (const TSharedPtr<FOverlayComponentData>* ExistingComponentData = OldObjectToComponentLookup.Find(ComponentTreeNode)) {
+			if (const TSharedPtr<FAbstractSubobjectTreeNode>* ExistingComponentData = OldObjectToComponentLookup.Find(ComponentTreeNode)) {
 				NodeComponentData = *ExistingComponentData;
 			} else {
 				// Create a new component data otherwise
@@ -802,17 +550,17 @@ void SOverlayComponentTreeEditor::RefreshComponentTreeFromBlueprint() {
 
 		// Add children nodes to the SCS nodes that we have added above. Note that we will not handle nodes parented to native components here.
 		for (const USCS_Node* ParentComponentTreeNode : SimpleConstructionScript->GetAllNodes()) {
-			const TSharedPtr<FOverlayComponentData> ParentComponentData = ObjectToComponentDataCache.FindChecked(ParentComponentTreeNode);
+			const TSharedPtr<FAbstractSubobjectTreeNode> ParentComponentData = ObjectToComponentDataCache.FindChecked(ParentComponentTreeNode);
 			
 			for (const USCS_Node* ChildComponentTreeNode : ParentComponentTreeNode->ChildNodes) {
-				const TSharedPtr<FOverlayComponentData> ChildComponentData = ObjectToComponentDataCache.FindChecked(ChildComponentTreeNode);
+				const TSharedPtr<FAbstractSubobjectTreeNode> ChildComponentData = ObjectToComponentDataCache.FindChecked(ChildComponentTreeNode);
 				ParentComponentData->AddChildNode(ChildComponentData);
 			}
 		}
 
 		// Add root nodes into the tree, or add SCS components as children of native components
 		for (const USCS_Node* RootTreeNode : SimpleConstructionScript->GetRootNodes()) {
-			const TSharedPtr<FOverlayComponentData> ComponentData = ObjectToComponentDataCache.FindChecked(RootTreeNode);
+			const TSharedPtr<FAbstractSubobjectTreeNode> ComponentData = ObjectToComponentDataCache.FindChecked(RootTreeNode);
 
 			// If this component node has a parent name, we need to resolve it using the previously created nodes from the native class or from a parent blueprint
 			if(RootTreeNode->ParentComponentOrVariableName != NAME_None) {
@@ -820,7 +568,7 @@ void SOverlayComponentTreeEditor::RefreshComponentTreeFromBlueprint() {
 				// If this is a native component, we can look it up using its name
 				if (RootTreeNode->bIsParentComponentNative) {
 					if (NativeComponentNameToComponentData.Contains(RootTreeNode->ParentComponentOrVariableName)) {
-						const TSharedPtr<FOverlayComponentData> ParentComponentData = NativeComponentNameToComponentData.FindChecked(RootTreeNode->ParentComponentOrVariableName);
+						const TSharedPtr<FAbstractSubobjectTreeNode> ParentComponentData = NativeComponentNameToComponentData.FindChecked(RootTreeNode->ParentComponentOrVariableName);
 						ParentComponentData->AddChildNode(ComponentData);
 						continue;
 					}
@@ -828,7 +576,7 @@ void SOverlayComponentTreeEditor::RefreshComponentTreeFromBlueprint() {
 					// We have to look it up using the parent BP class name and the name of the component variable otherwise
 					const TPair<FName, FName> ParentComponentKey{RootTreeNode->ParentComponentOwnerClassName, RootTreeNode->ParentComponentOrVariableName};
 					if (BlueprintSCSComponentKeyToComponentData.Contains(ParentComponentKey)) {
-						const TSharedPtr<FOverlayComponentData> ParentComponentData = BlueprintSCSComponentKeyToComponentData.FindChecked(ParentComponentKey);
+						const TSharedPtr<FAbstractSubobjectTreeNode> ParentComponentData = BlueprintSCSComponentKeyToComponentData.FindChecked(ParentComponentKey);
 						ParentComponentData->AddChildNode(ComponentData);
 						continue;
 					}
@@ -843,10 +591,10 @@ void SOverlayComponentTreeEditor::RefreshComponentTreeFromBlueprint() {
 	if (BlueprintObject->OverlayComponentTree != nullptr) {
 		// Create component data for each component node in the overlay component tree
 		for (const UBlueprintMixinComponentNode* ComponentTreeNode : BlueprintObject->OverlayComponentTree->AllNodes) {
-			TSharedPtr<FOverlayComponentData> NodeComponentData;
+			TSharedPtr<FAbstractSubobjectTreeNode> NodeComponentData;
 
 			// Attempt to find an existing component node for this node
-			if (const TSharedPtr<FOverlayComponentData>* ExistingComponentData = OldObjectToComponentLookup.Find(ComponentTreeNode)) {
+			if (const TSharedPtr<FAbstractSubobjectTreeNode>* ExistingComponentData = OldObjectToComponentLookup.Find(ComponentTreeNode)) {
 				NodeComponentData = *ExistingComponentData;
 			} else {
 				// Create a new component data otherwise
@@ -859,25 +607,25 @@ void SOverlayComponentTreeEditor::RefreshComponentTreeFromBlueprint() {
 
 		// Setup hierarchy for the nodes we have created
 		for (const UBlueprintMixinComponentNode* ParentComponentTreeNode : BlueprintObject->OverlayComponentTree->AllNodes) {
-			const TSharedPtr<FOverlayComponentData> ParentComponentData = ObjectToComponentDataCache.FindChecked(ParentComponentTreeNode);
+			const TSharedPtr<FAbstractSubobjectTreeNode> ParentComponentData = ObjectToComponentDataCache.FindChecked(ParentComponentTreeNode);
 			
 			// Register all child components into their parent tree
 			for (const UBlueprintMixinComponentNode* ChildComponentTreeNode : ParentComponentTreeNode->ChildNodes) {
-				const TSharedPtr<FOverlayComponentData> ChildComponentData = ObjectToComponentDataCache.FindChecked(ChildComponentTreeNode);
+				const TSharedPtr<FAbstractSubobjectTreeNode> ChildComponentData = ObjectToComponentDataCache.FindChecked(ChildComponentTreeNode);
 				ParentComponentData->AddChildNode(ChildComponentData);
 			}
 		}
 
 		// Add all the overlay component root nodes into the tree
 		for (const UBlueprintMixinComponentNode* RootTreeNode : BlueprintObject->OverlayComponentTree->RootNodes) {
-			const TSharedPtr<FOverlayComponentData> ComponentData = ObjectToComponentDataCache.FindChecked(RootTreeNode);
+			const TSharedPtr<FAbstractSubobjectTreeNode> ComponentData = ObjectToComponentDataCache.FindChecked(RootTreeNode);
 			
 			// If this component node has a parent name, we need to resolve it using the previously created nodes from the native class or from a parent blueprint
 			if(RootTreeNode->ParentComponentOrVariableName != NAME_None) {
 				// If this is a native component, we can look it up using its name
 				if (RootTreeNode->bIsParentComponentNative) {
 					if (NativeComponentNameToComponentData.Contains(RootTreeNode->ParentComponentOrVariableName)) {
-						const TSharedPtr<FOverlayComponentData> ParentComponentData = NativeComponentNameToComponentData.FindChecked(RootTreeNode->ParentComponentOrVariableName);
+						const TSharedPtr<FAbstractSubobjectTreeNode> ParentComponentData = NativeComponentNameToComponentData.FindChecked(RootTreeNode->ParentComponentOrVariableName);
 						ParentComponentData->AddChildNode(ComponentData);
 						continue;
 					}
@@ -885,7 +633,7 @@ void SOverlayComponentTreeEditor::RefreshComponentTreeFromBlueprint() {
 					// We have to look it up using the parent BP class name and the name of the component variable otherwise
 					const TPair<FName, FName> ParentComponentKey{RootTreeNode->ParentComponentOwnerClassName, RootTreeNode->ParentComponentOrVariableName};
 					if (BlueprintSCSComponentKeyToComponentData.Contains(ParentComponentKey)) {
-						const TSharedPtr<FOverlayComponentData> ParentComponentData = BlueprintSCSComponentKeyToComponentData.FindChecked(ParentComponentKey);
+						const TSharedPtr<FAbstractSubobjectTreeNode> ParentComponentData = BlueprintSCSComponentKeyToComponentData.FindChecked(ParentComponentKey);
 						ParentComponentData->AddChildNode(ComponentData);
 						continue;
 					}
@@ -905,55 +653,24 @@ bool SOverlayComponentTreeEditor::IsEditingAllowed() const {
 	return false;
 }
 
-TArray<TSharedPtr<FOverlayComponentData>> SOverlayComponentTreeEditor::GetSelectedNodes() const {
-	TArray<TSharedPtr<FOverlayComponentData>> SelectedTreeNodes = ComponentTreeView->GetSelectedItems();
-
-	// Sort the nodes from the parent to the child
-	SelectedTreeNodes.StableSort([](const TSharedPtr<FOverlayComponentData>& A, const TSharedPtr<FOverlayComponentData>& B) {
-		return B.IsValid() && B->IsAttachedToParent(A);
-	});
-	return SelectedTreeNodes;
-}
-
-TSharedRef<ITableRow> SOverlayComponentTreeEditor::MakeTableRowWidget(TSharedPtr<FOverlayComponentData> InNodePtr, const TSharedRef<STableViewBase>& OwnerTable) {
+TSharedRef<ITableRow> SOverlayComponentTreeEditor::MakeTableRowWidget(TSharedPtr<FAbstractSubobjectTreeNode> InNodePtr, const TSharedRef<STableViewBase>& OwnerTable) {
 	// Create row widget for normal nodes and separator widget for null nodes
 	if (InNodePtr.IsValid()) {
 		return SNew(SOverlayComponentTreeViewRowWidget, SharedThis(this), InNodePtr, OwnerTable);	
 	}
-	return SNew(SOverlayComponentTreeSeparatorRowWidget, OwnerTable);
+	return SNew(STableRow<TSharedPtr<FAbstractSubobjectTreeNode>>, OwnerTable);
 }
 
-void SOverlayComponentTreeEditor::OnGetChildrenForTree(const TSharedPtr<FOverlayComponentData> InNodePtr, TArray<TSharedPtr<FOverlayComponentData>>& OutChildren) {
-	// Populate the children nodes using the function on the component data
-	if (InNodePtr) {
-		InNodePtr->GetChildrenNodes(OutChildren);
-	}
-}
-
-void SOverlayComponentTreeEditor::SetItemExpansionRecursive(const TSharedPtr<FOverlayComponentData> InNodeToChange, bool bInExpansionState) {
-	if (ComponentTreeView.IsValid() && InNodeToChange.IsValid()) {
-		// Expand the provided item
-		ComponentTreeView->SetItemExpansion(InNodeToChange, bInExpansionState);
-
-		// Retrieve the children of the provided item and expand them too
-		TArray<TSharedPtr<FOverlayComponentData>> Children;
-		InNodeToChange->GetChildrenNodes(Children);
-		for (const TSharedPtr<FOverlayComponentData>& Child : Children) {
-			SetItemExpansionRecursive(Child, bInExpansionState);
-		}
-	}
-}
-
-void SOverlayComponentTreeEditor::UpdateSelectionFromNodes(const TArray<TSharedPtr<FOverlayComponentData>>& SelectedNodes) {
+void SOverlayComponentTreeEditor::UpdateSelectionFromNodes(const TArray<TSharedPtr<FAbstractSubobjectTreeNode>>& SelectedNodes) {
 	if (const TSharedPtr<FHookBlueprintEditor> BlueprintEditor = OwnerBlueprintEditor.Pin()) {
 		// Collect all objects from the nodes that we want to edit
 		TArray<UObject*> ComponentObjectsToEdit;
 		FText InspectorTitle;
-		for (const TSharedPtr<FOverlayComponentData>& ComponentData : SelectedNodes) {
+		for (const TSharedPtr<FAbstractSubobjectTreeNode>& ComponentData : SelectedNodes) {
 			if (ComponentData->IsNodeEditable()) {
-				if (UActorComponent* EditableActorComponent = ComponentData->GetMutableActorComponentTemplate()) {
+				if (UActorComponent* EditableActorComponent = Cast<UActorComponent>(ComponentData->GetMutableObject())) {
 					ComponentObjectsToEdit.Add(EditableActorComponent);
-					InspectorTitle = ComponentData->GetNameLabel();
+					InspectorTitle = ComponentData->GetNameLabel(false);
 				}
 			}
 		}
@@ -973,21 +690,6 @@ void SOverlayComponentTreeEditor::UpdateSelectionFromNodes(const TArray<TSharedP
 				}
 			}
 		}
-	}
-}
-
-void SOverlayComponentTreeEditor::OnTreeSelectionChanged(TSharedPtr<FOverlayComponentData>, ESelectInfo::Type) {
-	// Update the details panel state from a list of the selected nodes
-	UpdateSelectionFromNodes(ComponentTreeView->GetSelectedItems());
-}
-
-void SOverlayComponentTreeEditor::OnItemScrolledIntoView(TSharedPtr<FOverlayComponentData> InItem, const TSharedPtr<ITableRow>& InWidget) {
-	// If we have a component rename pending, once the component is scrolled into the view, we need to start the edit mode on the name label
-	if (PendingRenameComponentData.IsValid() && PendingRenameComponentData == InItem) {
-		if (const TSharedPtr<SOverlayComponentTreeViewRowWidget> RowWidget = StaticCastSharedPtr<SOverlayComponentTreeViewRowWidget>(InWidget)) {
-			RowWidget->StartEditingComponentName();
-		}
-		PendingRenameComponentData.Reset();
 	}
 }
 
@@ -1056,8 +758,8 @@ FSubobjectDataHandle SOverlayComponentTreeEditor::PerformComboAddClass(TSubclass
 	return FSubobjectDataHandle::InvalidHandle;
 }
 
-TSharedPtr<FOverlayComponentData> SOverlayComponentTreeEditor::FindComponentDataForComponentInstance(const UActorComponent* InPreviewComponent) const {
-	for (const TSharedPtr<FOverlayComponentData>& PotentialComponentNode : AllNodes) {
+TSharedPtr<FAbstractSubobjectTreeNode> SOverlayComponentTreeEditor::FindComponentDataForComponentInstance(const UActorComponent* InPreviewComponent) const {
+	for (const TSharedPtr<FAbstractSubobjectTreeNode>& PotentialComponentNode : AllNodes) {
 		if (InPreviewComponent->CreationMethod == EComponentCreationMethod::Native && InPreviewComponent->ComponentHasTag(UBlueprintMixinOverlayComponentTree::OverlayComponentTag)) {
 			if (const TSharedPtr<FMutableMixinComponentNodeData> MixinComponentNode = PotentialComponentNode->GetAs<FMutableMixinComponentNodeData>()) {
 				// This is the node we are looking for if the variable name matches the component name
@@ -1077,7 +779,7 @@ TSharedPtr<FOverlayComponentData> SOverlayComponentTreeEditor::FindComponentData
 		} else if (InPreviewComponent->CreationMethod == EComponentCreationMethod::Native) {
 			if (const TSharedPtr<FImmutableNativeComponentData> ImmutableNativeComponentNode = PotentialComponentNode->GetAs<FImmutableNativeComponentData>()) {
 				// We could also check for RF_ClassDefaultSubobject on the preview component here
-				const UActorComponent* NativeComponentTemplate = ImmutableNativeComponentNode->GetImmutableActorComponentTemplate();
+				const UActorComponent* NativeComponentTemplate = Cast<UActorComponent>(ImmutableNativeComponentNode->GetImmutableObject());
 				if (NativeComponentTemplate && NativeComponentTemplate->GetFName() == InPreviewComponent->GetFName() && InPreviewComponent->GetClass() == NativeComponentTemplate->GetClass()) {
 					return ImmutableNativeComponentNode;
 				}
@@ -1087,7 +789,7 @@ TSharedPtr<FOverlayComponentData> SOverlayComponentTreeEditor::FindComponentData
 	return nullptr;
 }
 
-UActorComponent* SOverlayComponentTreeEditor::FindComponentInstanceInActor(AActor* InActor, const TSharedPtr<FOverlayComponentData>& InComponentData) const {
+UActorComponent* SOverlayComponentTreeEditor::FindComponentInstanceInActor(AActor* InActor, const TSharedPtr<FAbstractSubobjectTreeNode>& InComponentData) const {
 	if (const TSharedPtr<FMutableMixinComponentNodeData> MixinComponentNode = InComponentData->GetAs<FMutableMixinComponentNodeData>()) {
 		// Overlay components have stable full names and an additional tag that identifies them
 		if (const UBlueprintMixinComponentNode* ComponentNode = MixinComponentNode->GetComponentNode()) {
@@ -1113,7 +815,7 @@ UActorComponent* SOverlayComponentTreeEditor::FindComponentInstanceInActor(AActo
 		}
 	} else if (const TSharedPtr<FImmutableNativeComponentData> ImmutableNativeComponentNode = InComponentData->GetAs<FImmutableNativeComponentData>()) {
 		// Native component nodes can be looked up simply by their name, which should always be stable
-		if (const UActorComponent* NativeComponentTemplate = ImmutableNativeComponentNode->GetImmutableActorComponentTemplate()) {
+		if (const UActorComponent* NativeComponentTemplate = Cast<UActorComponent>(ImmutableNativeComponentNode->GetImmutableObject())) {
 			TArray<UActorComponent*> AllActorComponents;
 			InActor->GetComponents(AllActorComponents);
 
@@ -1136,28 +838,28 @@ void SOverlayComponentTreeEditor::SetSelectionOverrideForComponent(UPrimitiveCom
 }
 
 void SOverlayComponentTreeEditor::SelectNodeForComponent(const UActorComponent* InPreviewComponent, bool bIsMultiSelectActive) {
-	if (const TSharedPtr<FOverlayComponentData> ComponentNode = FindComponentDataForComponentInstance(InPreviewComponent)) {
+	if (const TSharedPtr<FAbstractSubobjectTreeNode> ComponentNode = FindComponentDataForComponentInstance(InPreviewComponent)) {
 		if (bIsMultiSelectActive) {
-			ComponentTreeView->SetItemSelection(ComponentNode, true);
+			SubobjectTreeView->SetItemSelection(ComponentNode, true);
 		} else {
-			ComponentTreeView->SetSelection(ComponentNode);
+			SubobjectTreeView->SetSelection(ComponentNode);
 		}
 		// Scroll the selected item into the view
-		ComponentTreeView->RequestScrollIntoView(ComponentNode);
+		SubobjectTreeView->RequestScrollIntoView(ComponentNode);
 	}
 }
 
 bool SOverlayComponentTreeEditor::IsComponentInstanceSelected(const UPrimitiveComponent* InPreviewComponent) const {
-	const TSharedPtr<FOverlayComponentData> ComponentNode = FindComponentDataForComponentInstance(InPreviewComponent);
-	return ComponentNode && ComponentTreeView->IsItemSelected(ComponentNode);
+	const TSharedPtr<FAbstractSubobjectTreeNode> ComponentNode = FindComponentDataForComponentInstance(InPreviewComponent);
+	return ComponentNode && SubobjectTreeView->IsItemSelected(ComponentNode);
 }
 
-void SOverlayComponentTreeEditor::OnDeleteAction(const TArray<TSharedPtr<FOverlayComponentData>>& NodesToDelete) {
+void SOverlayComponentTreeEditor::HandleDeleteAction(const TArray<TSharedPtr<FAbstractSubobjectTreeNode>>& NodesToDelete) {
 	const FScopedTransaction ScopedTransaction(LOCTEXT("DeleteComponentNodesAction", "Delete Components"));
 	const TSharedPtr<FHookBlueprintEditor> BlueprintEditor = OwnerBlueprintEditor.Pin();
 	
 	// Remove nodes from their parents and move the children away
-	for (const TSharedPtr<FOverlayComponentData>& ComponentData : NodesToDelete) {
+	for (const TSharedPtr<FAbstractSubobjectTreeNode>& ComponentData : NodesToDelete) {
 		if (const TSharedPtr<const FMutableMixinComponentNodeData> MutableNodeData = ComponentData->GetAs<FMutableMixinComponentNodeData>()) {
 			if (UBlueprintMixinComponentNode* ComponentNode = const_cast<UBlueprintMixinComponentNode*>(MutableNodeData->GetComponentNode())) {
 
@@ -1183,7 +885,7 @@ void SOverlayComponentTreeEditor::OnDeleteAction(const TArray<TSharedPtr<FOverla
 	UpdateTree();
 }
 
-void SOverlayComponentTreeEditor::OnUpdateComponentNameAction(const TSharedPtr<FOverlayComponentData>& ComponentData, const FText& InNewComponentName) {
+void SOverlayComponentTreeEditor::HandleRenameAction(const TSharedPtr<FAbstractSubobjectTreeNode>& ComponentData, const FText& InNewComponentName) {
 	const FScopedTransaction ScopedTransaction(LOCTEXT("RenameComponenNodesAction", "Rename Component"));
 	const TSharedPtr<FHookBlueprintEditor> BlueprintEditor = OwnerBlueprintEditor.Pin();
 
@@ -1205,11 +907,38 @@ void SOverlayComponentTreeEditor::OnUpdateComponentNameAction(const TSharedPtr<F
 	BlueprintEditor->OnOverlayComponentTreeChanged();
 }
 
-void SOverlayComponentTreeEditor::OnAttachToDropAction(const TSharedPtr<FOverlayComponentData>& AttachToComponentData, const TArray<TSharedPtr<FOverlayComponentData>>& NodesToAttach) {
+void SOverlayComponentTreeEditor::HandleDragDropAction(const TSharedRef<FAbstractSubobjectTreeDragDropOp>& DragDropAction, const TSharedPtr<FAbstractSubobjectTreeNode>& DropOntoNode) {
+	if (DragDropAction->IsOfType<FOverlayComponentTreeRowDragDropOp>()) {
+		const TSharedRef<FOverlayComponentTreeRowDragDropOp> ComponentDragDrop = StaticCastSharedRef<FOverlayComponentTreeRowDragDropOp>(DragDropAction);
+		switch (ComponentDragDrop->PendingDropAction) {
+			case FOverlayComponentTreeRowDragDropOp::DropAction_AttachTo: OnAttachToDropAction( DropOntoNode, ComponentDragDrop->SourceNodes ); break;
+			case FOverlayComponentTreeRowDragDropOp::DropAction_DetachFrom: OnDetachFromDropAction( ComponentDragDrop->SourceNodes ); break;
+			default: break;
+		}
+	}
+}
+
+TSharedRef<FAbstractSubobjectTreeDragDropOp> SOverlayComponentTreeEditor::CreateDragDropActionFromNodes(const TArray<TSharedPtr<FAbstractSubobjectTreeNode>>& SelectedNodes) const {
+	return FOverlayComponentTreeRowDragDropOp::Create( SelectedNodes );
+}
+
+void SOverlayComponentTreeEditor::UpdateDragDropOntoNode( const TSharedRef<FAbstractSubobjectTreeDragDropOp>& DragDropAction, const TSharedPtr<FAbstractSubobjectTreeNode>& DropOntoNode, FText& OutFeedbackMessage ) const {
+	if (DragDropAction->IsOfType<FOverlayComponentTreeRowDragDropOp>()) {
+		const TSharedRef<FOverlayComponentTreeRowDragDropOp> ComponentDragDrop = StaticCastSharedRef<FOverlayComponentTreeRowDragDropOp>(DragDropAction);
+		for (const TSharedPtr<FAbstractSubobjectTreeNode>& ComponentNode : ComponentDragDrop->SourceNodes) {
+			ComponentDragDrop->PendingDropAction = FOverlayComponentTreeRowDragDropOp::CheckCanAttachSelectedNodeToNode(ComponentNode, DropOntoNode, OutFeedbackMessage);
+			if ( !ComponentDragDrop->IsValidDragDropTargetAction() ) {
+				break;
+			}
+		}
+	}
+}
+
+void SOverlayComponentTreeEditor::OnAttachToDropAction(const TSharedPtr<FAbstractSubobjectTreeNode>& AttachToComponentData, const TArray<TSharedPtr<FAbstractSubobjectTreeNode>>& NodesToAttach) {
 	const FScopedTransaction ScopedTransaction(LOCTEXT("DeleteComponentNodesAction", "Move Components"));
 
 	// Attach the nodes to the new parent node
-	for (const TSharedPtr<FOverlayComponentData>& ComponentData : NodesToAttach) {
+	for (const TSharedPtr<FAbstractSubobjectTreeNode>& ComponentData : NodesToAttach) {
 		// Resolve the mutable component node reference
 		const TSharedPtr<const FMutableMixinComponentNodeData> MutableNodeData = ComponentData->GetAs<FMutableMixinComponentNodeData>();
 		if (!MutableNodeData.IsValid()) continue;
@@ -1227,11 +956,11 @@ void SOverlayComponentTreeEditor::OnAttachToDropAction(const TSharedPtr<FOverlay
 	UpdateTree();
 }
 
-void SOverlayComponentTreeEditor::OnDetachFromDropAction(const TArray<TSharedPtr<FOverlayComponentData>>& NodesToAttach) {
+void SOverlayComponentTreeEditor::OnDetachFromDropAction(const TArray<TSharedPtr<FAbstractSubobjectTreeNode>>& NodesToAttach) {
 	const FScopedTransaction ScopedTransaction(LOCTEXT("DetachComponentNodesAction", "Detach Components"));
 
 	// Remove nodes from their parents and move the children away
-	for (const TSharedPtr<FOverlayComponentData>& ComponentData : NodesToAttach) {
+	for (const TSharedPtr<FAbstractSubobjectTreeNode>& ComponentData : NodesToAttach) {
 		if (const TSharedPtr<const FMutableMixinComponentNodeData> MutableNodeData = ComponentData->GetAs<FMutableMixinComponentNodeData>()) {
 			if (UBlueprintMixinComponentNode* ComponentNode = const_cast<UBlueprintMixinComponentNode*>(MutableNodeData->GetComponentNode())) {
 				ComponentNode->DetachFromParent();
@@ -1251,7 +980,7 @@ void SOverlayComponentTreeEditor::CreateComponentFromClass(UClass* InComponentCl
 	// This function is assumed to run inside the transaction, so we do not open one here
 	const TSharedPtr<FHookBlueprintEditor> BlueprintEditor = OwnerBlueprintEditor.Pin();
 	UHookBlueprint* EditedBlueprint = BlueprintEditor ? Cast<UHookBlueprint>(BlueprintEditor->GetBlueprintObj()) : nullptr;
-	const TArray<TSharedPtr<FOverlayComponentData>> SelectedNodes = GetSelectedNodes();
+	const TArray<TSharedPtr<FAbstractSubobjectTreeNode>> SelectedNodes = GetSelectedNodes();
 
 	if (EditedBlueprint && EditedBlueprint->OverlayComponentTree && EditedBlueprint->MixinTargetClass) {
 		// Generate variable name based on the component class or the asset provided
@@ -1292,14 +1021,14 @@ void SOverlayComponentTreeEditor::CreateComponentFromClass(UClass* InComponentCl
 	UpdateTree();
 }
 
-bool SOverlayComponentTreeEditor::AttachComponentNodeToComponentData(UBlueprintMixinComponentNode* InComponentNode, const TSharedPtr<FOverlayComponentData>& InAttachToComponentData) {
+bool SOverlayComponentTreeEditor::AttachComponentNodeToComponentData(UBlueprintMixinComponentNode* InComponentNode, const TSharedPtr<FAbstractSubobjectTreeNode>& InAttachToComponentData) {
 	// Determine the type of the node we need to attach to set valid data
 	if (const TSharedPtr<const FImmutableSCSNodeComponentData> SCSNodeComponentData = InAttachToComponentData->GetAs<FImmutableSCSNodeComponentData>()) {
 		if (const USCS_Node* NewParentSCSNode = SCSNodeComponentData->GetSCSNode()) {
 			return InComponentNode->AttachToSCSNode(NewParentSCSNode);
 		}
 	} else if (const TSharedPtr<const FImmutableNativeComponentData> NativeComponentData = InAttachToComponentData->GetAs<FImmutableNativeComponentData>()) {
-		if (const UActorComponent* NewNativeParentComponent = NativeComponentData->GetImmutableActorComponentTemplate()) {
+		if (const UActorComponent* NewNativeParentComponent = Cast<UActorComponent>(NativeComponentData->GetImmutableObject())) {
 			return InComponentNode->AttachToNativeActorComponent(NewNativeParentComponent);
 		}
 	} else if (const TSharedPtr<const FMutableMixinComponentNodeData> NodeComponentData = InAttachToComponentData->GetAs<FMutableMixinComponentNodeData>()) {
@@ -1310,55 +1039,13 @@ bool SOverlayComponentTreeEditor::AttachComponentNodeToComponentData(UBlueprintM
 	return false;
 }
 
-void SOverlayComponentTreeEditor::UpdateTree() {
-	// Refresh the component tree now that we have saved the selection state
-	RefreshComponentTreeFromBlueprint();
-
-	// Request the refresh of the component tree widget
-	if (ComponentTreeView.IsValid()) {
-		ComponentTreeView->RequestTreeRefresh();
-	}
-}
-
-bool SOverlayComponentTreeEditor::CanRenameComponent() const {
-	const TArray<TSharedPtr<FOverlayComponentData>> SelectedNodes = GetSelectedNodes();
-	return IsEditingAllowed() && (SelectedNodes.Num() == 1 && SelectedNodes[0]->IsNodeEditable());
-}
-
-void SOverlayComponentTreeEditor::OnRenameComponent() {
-	const TArray<TSharedPtr<FOverlayComponentData>> SelectedNodes = GetSelectedNodes();
-	if (SelectedNodes.Num() == 1 && SelectedNodes[0]->IsNodeEditable()) {
-		PendingRenameComponentData = SelectedNodes[0];
-		ComponentTreeView->RequestScrollIntoView(SelectedNodes[0]);
-	}
-}
-
-bool SOverlayComponentTreeEditor::CanDeleteNodes() const {
-	if(!IsEditingAllowed()) {
-		return false;
-	}
-	// Components can be deleted if their nodes are editable
-	const TArray<TSharedPtr<FOverlayComponentData>> SelectedNodes = GetSelectedNodes();
-	for (const TSharedPtr<FOverlayComponentData>& SelectedNode : SelectedNodes) {
-		if (!SelectedNode->IsNodeEditable()) {
-			return false;
-		}
-	}
-	return true;
-}
-
-void SOverlayComponentTreeEditor::OnDeleteNodes() {
-	const TArray<TSharedPtr<FOverlayComponentData>> SelectedNodes = GetSelectedNodes();
-	OnDeleteAction(SelectedNodes);
-}
-
 void SOverlayComponentTreeEditor::OnFindReferences() {
 	if (const TSharedPtr<FHookBlueprintEditor> BlueprintEditor = OwnerBlueprintEditor.Pin()) {
-		const TArray<TSharedPtr<FOverlayComponentData>> SelectedNodes = GetSelectedNodes();
+		const TArray<TSharedPtr<FAbstractSubobjectTreeNode>> SelectedNodes = GetSelectedNodes();
 		if (SelectedNodes.Num() == 1) {
 			UBlueprint* OwnerBlueprint = BlueprintEditor->GetBlueprintObj();
 			UClass* OwnerClass = SelectedNodes[0]->GetOwnerClass();
-			const FName VariableName = SelectedNodes[0]->GetComponentVariableName();
+			const FName VariableName = SelectedNodes[0]->GetSubobjectVariableName();
 
 			// If this node is editable, we need to look for it in the self context
 			if (SelectedNodes[0]->IsNodeEditable() && OwnerBlueprint && VariableName != NAME_None) {
@@ -1384,8 +1071,8 @@ void FOverlayComponentTreeRowDragDropOp::HoverTargetChanged() {
 	const FSlateBrush* SuccessStatusSymbol = FAppStyle::GetBrush(TEXT("Graph.ConnectorFeedback.OK"));
 
 	// Make sure we have a valid variable that we are dragging
-	const TSharedPtr<FOverlayComponentData> FirstVariableData = SourceNodes.IsEmpty() ? nullptr : SourceNodes[0];
-	if (FirstVariableData == nullptr || FirstVariableData->GetComponentVariableName() == NAME_None) {
+	const TSharedPtr<FAbstractSubobjectTreeNode> FirstVariableData = SourceNodes.IsEmpty() ? nullptr : SourceNodes[0];
+	if (FirstVariableData == nullptr || FirstVariableData->GetSubobjectVariableName() == NAME_None) {
 		SetSimpleFeedbackMessage(ErrorStatusSymbol, FLinearColor::White, LOCTEXT("InvalidComponentNodeDragSource", "Invalid component node being dragged!"));
 		return;
 	}
@@ -1402,10 +1089,10 @@ void FOverlayComponentTreeRowDragDropOp::HoverTargetChanged() {
 
 	// Resolve the variable property and determine if it is valid
 	const UClass* VariableTargetClass = bIsSelfContext ? GraphOwnerBlueprint->SkeletonGeneratedClass.Get() : FirstVariableData->GetOwnerClass();
-	FObjectProperty* VariableProperty = VariableTargetClass ? FindFProperty<FObjectProperty>(VariableTargetClass, FirstVariableData->GetComponentVariableName()) : nullptr;
+	FObjectProperty* VariableProperty = VariableTargetClass ? FindFProperty<FObjectProperty>(VariableTargetClass, FirstVariableData->GetSubobjectVariableName()) : nullptr;
 	if (VariableProperty == nullptr) {
 		SetSimpleFeedbackMessage(ErrorStatusSymbol, FLinearColor::White,
-			FText::Format(LOCTEXT("InvalidComponentNodeProperty", "Component Node {0} does not have a Variable associated with it."), FirstVariableData->GetNameLabel()));
+			FText::Format(LOCTEXT("InvalidComponentNodeProperty", "Component Node {0} does not have a Variable associated with it."), FirstVariableData->GetNameLabel(false)));
 		return;
 	}
 	// Validate that variable can be dropped on this graph at all
@@ -1452,11 +1139,11 @@ void FOverlayComponentTreeRowDragDropOp::HoverTargetChanged() {
 			if (PinUnderCursor->HasAnyConnections() && !bMultipleSelfConnectionException) {
 				// We have to break existing connections to connect this pin
 				SetSimpleFeedbackMessage(SuccessStatusSymbol, FLinearColor::White, FText::Format(LOCTEXT("CreateComponentNodeOnPin_ReplaceConnection", "Connect pin {0} to Component variable {1}.\nThis will break existing pin connections!"),
-					PinUnderCursor->GetDisplayName(), FirstVariableData->GetNameLabel()));
+					PinUnderCursor->GetDisplayName(), FirstVariableData->GetNameLabel(false)));
 			} else {
 				// There are no existing pins, we will just create a new connection
 				SetSimpleFeedbackMessage(SuccessStatusSymbol, FLinearColor::White, FText::Format(LOCTEXT("CreatetComponentNodeOnPin_NewConnection", "Connect pin {0} to Component variable {1}."),
-					PinUnderCursor->GetDisplayName(), FirstVariableData->GetNameLabel()));
+					PinUnderCursor->GetDisplayName(), FirstVariableData->GetNameLabel(false)));
 			}
 		} else {
 			// Pin types are incompatible connection is not possible
@@ -1466,14 +1153,14 @@ void FOverlayComponentTreeRowDragDropOp::HoverTargetChanged() {
 		}
 	} else {
 		// We are not hovering over a pin, so just tell the user that a new node can be created here
-		SetSimpleFeedbackMessage(SuccessStatusSymbol, FLinearColor::White, FText::Format(LOCTEXT("CreateComponentNodeInGraph", "Read Component variable {0}."), FirstVariableData->GetNameLabel()));
+		SetSimpleFeedbackMessage(SuccessStatusSymbol, FLinearColor::White, FText::Format(LOCTEXT("CreateComponentNodeInGraph", "Read Component variable {0}."), FirstVariableData->GetNameLabel(false)));
 	}
 }
 
-UK2Node_VariableGet* FOverlayComponentTreeRowDragDropOp::SpawnVariableGetNodeForComponentData(UEdGraph* InTargetGraph, const TSharedPtr<FOverlayComponentData>& InComponentData, const FVector2D& InGraphPosition) {
+UK2Node_VariableGet* FOverlayComponentTreeRowDragDropOp::SpawnVariableGetNodeForComponentData(UEdGraph* InTargetGraph, const TSharedPtr<FAbstractSubobjectTreeNode>& InComponentData, const FVector2D& InGraphPosition) {
 	const UEdGraphSchema_K2* K2_Schema = Cast<const UEdGraphSchema_K2>(InTargetGraph->GetSchema());
 	UBlueprint* Blueprint = FBlueprintEditorUtils::FindBlueprintForGraph(InTargetGraph);
-	const FName VariableName = InComponentData->GetComponentVariableName();
+	const FName VariableName = InComponentData->GetSubobjectVariableName();
 	UClass* VariableOwnerClass = InComponentData->GetOwnerClass();
 
 	// Check for a valid K2 graph schema and a valid blueprint first
@@ -1509,7 +1196,7 @@ FReply FOverlayComponentTreeRowDragDropOp::DroppedOnPanel(const TSharedRef<SWidg
 	if (Graph.GetSchema()->IsA<UEdGraphSchema_K2>()) {
 		const FScopedTransaction ScopedTransaction(LOCTEXT("DropComponentNodeOnGraphAction", "Drop Component variable(s) on Graph")); 
 		
-		for (const TSharedPtr<FOverlayComponentData>& ComponentData : SourceNodes) {
+		for (const TSharedPtr<FAbstractSubobjectTreeNode>& ComponentData : SourceNodes) {
 			if (UK2Node_VariableGet* NewVariableNode = SpawnVariableGetNodeForComponentData(&Graph, ComponentData, GraphPosition)) {
 			
 				// Add the node to the spawned list and advance the position vertically enough to spawn the next node
@@ -1539,8 +1226,8 @@ FReply FOverlayComponentTreeRowDragDropOp::DroppedOnPin(FVector2D ScreenPosition
 	if (K2_Schema != nullptr && PinTargetClass != nullptr) {
 		const FScopedTransaction ScopedTransaction(LOCTEXT("DropComponentNodeOnPinAction", "Drop Component variable on Pin")); 
 		
-		for (const TSharedPtr<FOverlayComponentData>& ComponentData : SourceNodes) {
-			const FName VariableName = ComponentData->GetComponentVariableName();
+		for (const TSharedPtr<FAbstractSubobjectTreeNode>& ComponentData : SourceNodes) {
+			const FName VariableName = ComponentData->GetSubobjectVariableName();
 			const UClass* VariableOwnerClass = ComponentData->GetOwnerClass();
 
 			if (VariableName != NAME_None && VariableOwnerClass != nullptr) {
@@ -1568,16 +1255,16 @@ FReply FOverlayComponentTreeRowDragDropOp::DroppedOnPin(FVector2D ScreenPosition
 	return FReply::Unhandled();
 }
 
-TSharedRef<FOverlayComponentTreeRowDragDropOp> FOverlayComponentTreeRowDragDropOp::Create(const TArray<TSharedPtr<FOverlayComponentData>>& InSourceNodes) {
+TSharedRef<FOverlayComponentTreeRowDragDropOp> FOverlayComponentTreeRowDragDropOp::Create(const TArray<TSharedPtr<FAbstractSubobjectTreeNode>>& InSourceNodes) {
 	TSharedRef<FOverlayComponentTreeRowDragDropOp> NewOperation = MakeShared<FOverlayComponentTreeRowDragDropOp>();
 	NewOperation->SourceNodes = InSourceNodes;
-	NewOperation->PendingDropAction = EDropActionType::DropAction_None;
+	NewOperation->PendingDropAction = DropAction_None;
 	NewOperation->Construct();
 	return NewOperation;
 }
 
-FOverlayComponentTreeRowDragDropOp::EDropActionType SOverlayComponentTreeViewRowWidget::CheckCanAttachSelectedNodeToNode(const TSharedPtr<FOverlayComponentData>& SelectedNode, const TSharedPtr<FOverlayComponentData>& DraggedOverNode, FText& OutDescriptionMessage) {
-	const UActorComponent* CurrentNodeActorComponentTemplate = DraggedOverNode->GetImmutableActorComponentTemplate();
+FOverlayComponentTreeRowDragDropOp::EDropActionType FOverlayComponentTreeRowDragDropOp::CheckCanAttachSelectedNodeToNode(const TSharedPtr<FAbstractSubobjectTreeNode>& SelectedNode, const TSharedPtr<FAbstractSubobjectTreeNode>& DraggedOverNode, FText& OutDescriptionMessage) {
+	const UActorComponent* CurrentNodeActorComponentTemplate = Cast<UActorComponent>(DraggedOverNode->GetImmutableObject());
 	const USceneComponent* CurrentNodeComponentTemplate = Cast<USceneComponent>(CurrentNodeActorComponentTemplate);
 	
 	// If we are hovering the actor root or the separator node, tell the user to hover over a component instead
@@ -1596,7 +1283,7 @@ FOverlayComponentTreeRowDragDropOp::EDropActionType SOverlayComponentTreeViewRow
 		return FOverlayComponentTreeRowDragDropOp::DropAction_None;
 	}
 	// Make sure that the selected node actually represents a scene component
-	const USceneComponent* SelectedNodeComponentTemplate = Cast<USceneComponent>(SelectedNode->GetImmutableActorComponentTemplate());
+	const USceneComponent* SelectedNodeComponentTemplate = Cast<USceneComponent>(SelectedNode->GetImmutableObject());
 	if (SelectedNodeComponentTemplate == nullptr) {
 		OutDescriptionMessage = LOCTEXT("DropActionTooltip_Error_CannotAttachNotSceneComponent", "The selected component is not a scene component and cannot be attached to other components.");
 		return FOverlayComponentTreeRowDragDropOp::DropAction_None;
@@ -1634,7 +1321,7 @@ FOverlayComponentTreeRowDragDropOp::EDropActionType SOverlayComponentTreeViewRow
 	}
 
 	// We can attach the selected component to this component otherwise
-	OutDescriptionMessage = FText::Format(LOCTEXT("DropActionTooltip_AttachToComponent", "Drop here to attach the selected component to {0}"), DraggedOverNode->GetNameLabel());
+	OutDescriptionMessage = FText::Format(LOCTEXT("DropActionTooltip_AttachToComponent", "Drop here to attach the selected component to {0}"), DraggedOverNode->GetNameLabel(false));
 	return FOverlayComponentTreeRowDragDropOp::DropAction_AttachTo;
 }
 

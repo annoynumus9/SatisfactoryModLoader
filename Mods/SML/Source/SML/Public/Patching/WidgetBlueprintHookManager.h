@@ -1,9 +1,8 @@
 #pragma once
+
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
-#include "Components/CanvasPanelSlot.h"
-#include "Components/PanelSlot.h"
-#include "Engine/DataAsset.h"
+#include "Extensions/UserWidgetExtension.h"
 #include "Subsystems/EngineSubsystem.h"
 #include "WidgetBlueprintHookManager.generated.h"
 
@@ -48,60 +47,6 @@ namespace WidgetBlueprintHookParentValidator {
 	SML_API bool ValidateIndirectChildWidget(UWidget* Widget, UPanelWidget*& OutPanelWidget, bool bCheckVariableName);
 	SML_API bool ValidateWidgetBase(UWidget* Widget, bool bCheckVariableName);
 }
-
-UCLASS(Abstract)
-class SML_API UWidgetBlueprintHookSlot : public UObject
-{
-	GENERATED_BODY()
-public:
-	virtual void SetupPanelSlot(UPanelSlot* InPanelSlot) {};
-};
-
-UCLASS(EditInlineNew)
-class SML_API UWidgetBlueprintHookSlot_Generic : public UWidgetBlueprintHookSlot {
-	GENERATED_BODY()
-public:
-	/** How much space this slot should occupy in the direction of the panel. */
-	UPROPERTY(EditAnywhere, Category="Layout", meta = (DisplayAfter = "Padding"))
-	FSlateChildSize Size{};
-
-	/** The padding area between the slot and the content it contains. */
-	UPROPERTY(EditAnywhere, Category="Layout")
-	FMargin Padding{};
-
-	/** The alignment of the object horizontally. */
-	UPROPERTY(EditAnywhere, Category="Layout")
-	TEnumAsByte<EHorizontalAlignment> HorizontalAlignment{HAlign_Fill};
-
-	/** The alignment of the object vertically. */
-	UPROPERTY(EditAnywhere, Category="Layout")
-	TEnumAsByte<EVerticalAlignment> VerticalAlignment{HAlign_Fill};
-
-	// Begin UWidgetBlueprintHookSlot interface
-	virtual void SetupPanelSlot(UPanelSlot* InPanelSlot) override;
-	// End UWidgetBlueprintHookSlot interface
-};
-
-UCLASS(EditInlineNew)
-class SML_API UWidgetBlueprintHookSlot_Canvas : public UWidgetBlueprintHookSlot {
-	GENERATED_BODY()
-public:
-	/** The anchoring information for the slot */
-	UPROPERTY(EditAnywhere, Category = "Layout")
-	FAnchorData LayoutData{};
-
-	/** When AutoSize is true we use the widget's desired size */
-	UPROPERTY(EditAnywhere, Category = "Layout")
-	bool bAutoSize{false};
-
-	/** The order priority this widget is rendered in.  Higher values are rendered last (and so they will appear to be on top). */
-	UPROPERTY(EditAnywhere, Category = "Layout")
-	int32 ZOrder{0};
-
-	// Begin UWidgetBlueprintHookSlot interface
-	virtual void SetupPanelSlot(UPanelSlot* InPanelSlot) override;
-	// End UWidgetBlueprintHookSlot interface
-};
 
 /** Data required to hook into the existing widget blueprint */
 UCLASS()
