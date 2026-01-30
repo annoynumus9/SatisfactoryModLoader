@@ -32,11 +32,11 @@ public:
 
     /** Root value in this configuration value hierarchy */
     UPROPERTY()
-    URootConfigValueHolder* RootValue;
+    TObjectPtr<URootConfigValueHolder> RootValue;
 
     /** Cached structs populated with this configuration values. Used for faster FillConfigStruct implementation */
     UPROPERTY()
-    TMap<UScriptStruct*, FReflectedObject> CachedValues;
+    TMap<TObjectPtr<UScriptStruct>, FReflectedObject> CachedValues;
 };
 
 /** Manages mod configuration states */

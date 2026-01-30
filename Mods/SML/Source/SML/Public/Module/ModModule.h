@@ -32,7 +32,7 @@ private:
     
     /** Child modules of this module */
     UPROPERTY()
-    TMap<FName, UModModule*> ChildModules;
+    TMap<FName, TObjectPtr<UModModule>> ChildModules;
     
     /** Events that we already received. Will be dispatched immediately on child modules */
     TArray<ELifecyclePhase> EventsReceived;

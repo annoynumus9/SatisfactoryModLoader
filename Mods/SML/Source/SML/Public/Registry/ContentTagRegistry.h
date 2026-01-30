@@ -84,7 +84,7 @@ public:
 
 private:
 	UPROPERTY()
-	TMap<UClass*, FGameplayTagContainer> TagContainerRegistry;
+	TMap<TObjectPtr<UClass>, FGameplayTagContainer> TagContainerRegistry;
 
 	bool bRegistryFrozen{ false };
 

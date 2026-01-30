@@ -10,15 +10,15 @@ class SML_API UConfigPropertyArray : public UConfigProperty, public IConfigValue
 public:
     /** Defines the "template" default value used for allocating other values in the array */
     UPROPERTY(EditAnywhere, Instanced, BlueprintReadOnly, Category = "Configuration Property", meta = (DisplayName= "New Value Template"))
-    UConfigProperty* DefaultValue;
+    TObjectPtr<UConfigProperty> DefaultValue;
 
     /** Default values of this configuration property. This is the value the property resets to. Should be of the same type as DefaultValue, names don't matter */
     UPROPERTY(EditAnywhere, Instanced, BlueprintReadOnly, Category = "Configuration Property")
-    TArray<UConfigProperty*> DefaultValues;
+    TArray<TObjectPtr<UConfigProperty>> DefaultValues;
 
     /** Runtime values of this configuration property. */
     UPROPERTY(Instanced, BlueprintReadWrite, Category = "Configuration Property")
-    TArray<UConfigProperty*> Values;
+    TArray<TObjectPtr<UConfigProperty>> Values;
 
 public:
     //Begin UObject

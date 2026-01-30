@@ -13,7 +13,7 @@ public:
      * Consider using alphanumerical characters only in property names
      */
     UPROPERTY(EditAnywhere, Instanced, BlueprintReadOnly, Category = "Configuration Property")
-    TMap<FString, UConfigProperty*> SectionProperties;
+    TMap<FString, TObjectPtr<UConfigProperty>> SectionProperties;
 
 	/** Fills reflected object with the values of this section */
 	void FillConfigStructSelf(const FReflectedObject& ReflectedObject) const;

@@ -13,7 +13,7 @@ UGameInstanceModuleManager::UGameInstanceModuleManager() {
 }
 
 UGameInstanceModule* UGameInstanceModuleManager::FindModule(const FName& ModReference) const {
-    UGameInstanceModule* const* GameInstanceModule = RootModuleMap.Find(ModReference);
+    const TObjectPtr<UGameInstanceModule>* GameInstanceModule = RootModuleMap.Find(ModReference);
     if (GameInstanceModule != NULL) {
         return *GameInstanceModule;
     }

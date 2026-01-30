@@ -44,7 +44,7 @@ public:
 
     /** Root property of this configuration describing its values */
     UPROPERTY(EditDefaultsOnly, Instanced, BlueprintReadOnly)
-    UConfigPropertySection* RootSection;
+    TObjectPtr<UConfigPropertySection> RootSection;
 
 	/** Custom Widget - placed at the Bottom of the Mod Config Widgets*/
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)

@@ -13,7 +13,7 @@ DEFINE_LOG_CATEGORY(LogContentTagRegistry);
 		const FString ScriptCallstack = UContentTagRegistry::GetCallStackContext(); \
 		UE_LOG(LogContentTagRegistry, Error, TEXT("Attempt to modify content tags failed: %s"), Context); \
 		UE_LOG(LogContentTagRegistry, Error, TEXT("Script Callstack: %s"), *ScriptCallstack); \
-		ensureMsgf( false, TEXT("%s"), *Context ); \
+		ensureMsgf( false, TEXT("%s"), Context ); \
 	} \
 
 UContentTagRegistry::UContentTagRegistry() {

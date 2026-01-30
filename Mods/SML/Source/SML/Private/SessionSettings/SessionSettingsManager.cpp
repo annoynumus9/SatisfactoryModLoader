@@ -69,11 +69,11 @@ bool USessionSettingsManager::ShouldCreateSubsystem( UObject* Outer ) const
 	return FPluginModuleLoader::ShouldLoadModulesForWorld(WorldOuter);
 }
 
-void USessionSettingsManager::GetAllUserSettings(TArray<UFGUserSettingApplyType*>& OutUserSettings) const {
+void USessionSettingsManager::GetAllUserSettings(TArray<TObjectPtr<UFGUserSettingApplyType>>& OutUserSettings) const {
 	return SessionSettings.GenerateValueArray(OutUserSettings);
 }
 
-void USessionSettingsManager::GetAllUserSettingsMap( TMap<FString, UFGUserSettingApplyType*>& OutUserSettings ) const {
+void USessionSettingsManager::GetAllUserSettingsMap( TMap<FString, TObjectPtr<UFGUserSettingApplyType>>& OutUserSettings ) const {
 	OutUserSettings.Append( SessionSettings );
 }
 
@@ -164,7 +164,7 @@ FVariant USessionSettingsManager::StringToVariant(const FString& String) {
 }
 
 UFGUserSettingApplyType* USessionSettingsManager::FindSessionSetting(const FString& strId) const {
-	UFGUserSettingApplyType* const* SessionSetting = SessionSettings.Find(strId);
+	const TObjectPtr<UFGUserSettingApplyType>* SessionSetting = SessionSettings.Find(strId);
 	if (!SessionSetting) {
 		UE_LOG(LogSatisfactoryModLoader, Error, TEXT("Could not find session setting '%s'"), *strId);
 		return nullptr;

@@ -77,7 +77,7 @@ UModModule* UModModule::SpawnChildModule(FName ModuleName, TSoftClassPtr<UModMod
 }
 
 UModModule* UModModule::GetChildModule(FName ModuleName, TSubclassOf<UModModule> ModuleClass) {
-    UModModule** ModModule = ChildModules.Find(ModuleName);
+    const TObjectPtr<UModModule>* ModModule = ChildModules.Find(ModuleName);
     //Check that module actually exists and its type matches type requested
     if (ModModule != NULL && (*ModModule)->IsA(ModuleClass)) {
         return *ModModule;

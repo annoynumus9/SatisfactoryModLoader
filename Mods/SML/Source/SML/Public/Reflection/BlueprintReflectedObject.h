@@ -70,7 +70,7 @@ public:
     UEnum* GetEnumerationType() const;
 private:
     UPROPERTY()
-    UEnum* EnumerationType;
+    TObjectPtr<UEnum> EnumerationType;
     /** Raw enumeration value represented as integer */
     UPROPERTY()
     int64 RawEnumValue;

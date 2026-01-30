@@ -12,7 +12,7 @@ public:
 
     /** Base class that values of this type should have */
     UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (EditCondition = "bLimitBaseClass",AllowAbstract = "true"), Category = "Configuration Property")
-    UClass* BaseClass;
+    TObjectPtr<UClass> BaseClass;
 
     /** Whenever to allow NULL class value on this property. If NULL is not allowed, it will fallback to default value instead */
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration Property")
@@ -20,11 +20,11 @@ public:
 
     /** Default value of this configuration property. This is the value the property resets to. */
     UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (AllowAbstract = "true"), Category = "Configuration Property")
-    UClass* DefaultValue;
+    TObjectPtr<UClass> DefaultValue;
 
     /** Runtime value of this configuration property. DO NOT SET DIRECTLY, USE SetClassValue */
     UPROPERTY(BlueprintReadOnly, meta = (AllowAbstract = "true"), Category = "Configuration Property")
-    UClass* Value;
+    TObjectPtr<UClass> Value;
 
 public:
     UConfigPropertyClass();

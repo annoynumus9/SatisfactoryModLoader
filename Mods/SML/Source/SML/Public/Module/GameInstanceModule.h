@@ -36,7 +36,7 @@ public:
     * text/widget for all items
     */
     UPROPERTY(EditDefaultsOnly, Category = "Advanced | Tooltips")
-    TArray<UClass*> GlobalItemTooltipProviders;
+    TArray<TObjectPtr<UClass>> GlobalItemTooltipProviders;
 
 	/** Blueprint hooks to apply to the Blueprint assets when this module is loaded */
 	UPROPERTY(EditDefaultsOnly, Category = "Advanced | Hooks")
@@ -51,15 +51,15 @@ public:
      * and manually adding your widget there, but this system provides a simpler and more convenient way
      */
     UPROPERTY(Instanced, EditDefaultsOnly, Category = "Advanced | Hooks")
-    TArray<UWidgetBlueprintHookData*> WidgetBlueprintHooks;
+    TArray<TObjectPtr<UWidgetBlueprintHookData>> WidgetBlueprintHooks;
 
 	/** Additional maps to register */
 	UPROPERTY(EditDefaultsOnly, Category = "Advanced | World")
-	TArray<USMLGameMapData*> GameMaps;
+	TArray<TObjectPtr<USMLGameMapData>> GameMaps;
 
 	/** Additional session settings to register */
 	UPROPERTY(EditDefaultsOnly, Category = "Advanced | World")
-	TArray<USMLSessionSetting*> SessionSettings;
+	TArray<TObjectPtr<USMLSessionSetting>> SessionSettings;
 
     /** Mod Remote Call Objects to be registered automatically during construction phase */
     UPROPERTY(EditDefaultsOnly, Category = "Advanced | Replication")
@@ -76,7 +76,7 @@ private:
         The data is temporarily kept around to make the migration to Actor Mixins easier. See the Upgrading guide on the docs.
         There is no need to clear data from this field as it will be deleted in later version. */
     UPROPERTY(Instanced, VisibleDefaultsOnly, Category = "Deprecated", meta = (DisplayName = "DEPRECATED Blueprint SCS Hooks"))
-    TArray<UBlueprintSCSHookData*> BlueprintSCSHooks;
+    TArray<TObjectPtr<UBlueprintSCSHookData>> BlueprintSCSHooks;
 protected:
     /** Allow SetOwnerModReference access to game instance module manager */
     friend class UGameInstanceModuleManager;
