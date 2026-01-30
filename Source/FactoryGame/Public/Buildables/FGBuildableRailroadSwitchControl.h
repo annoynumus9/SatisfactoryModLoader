@@ -7,6 +7,8 @@
 #include "FGUseableInterface.h"
 #include "FGBuildableRailroadSwitchControl.generated.h"
 
+class UFGRailroadTrackConnectionComponent;
+
 /**
  * Struct containing packaged switch data so we can get an OnRep for them as a group.
  */

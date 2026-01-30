@@ -514,7 +514,7 @@ public:
 	FORCEINLINE TArray<FBox> GetOcclusionBoxes() const  									{ return mOcclusionBoxInfo; }
 	FORCEINLINE float GetOcclusionShapeCustomScaleOffset() const 							{ return mScaleCustomOffset; }
 	FORCEINLINE EFGRainOcclusionShapeScaling GetOcclusionShapeCustomScalingMode() const		{ return mCustomScaleType; }
-	FORCEINLINE virtual FSimpleBuildingInfo GetRainOcclusionShape()							{ return FSimpleBuildingInfo(this); }
+	FORCEINLINE virtual FSimpleBuildingInfo GetRainOcclusionShape()							{ return FSimpleBuildingInfo(); }
 
 	/* Not replicated! */
 	void ToggleInstanceVisibility( bool bNewState );

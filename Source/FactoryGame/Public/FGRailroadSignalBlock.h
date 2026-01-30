@@ -180,6 +180,7 @@ private:
  */
 struct FACTORYGAME_API FFGRailroadSignalBlock : public TSharedFromThis< FFGRailroadSignalBlock >
 {
+	friend class FIRRailroadHelper;
 public:
 	/**
 	 * Called bu the tracks when a vehicle enters and exits a section of track.
