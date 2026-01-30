@@ -1,0 +1,38 @@
+diff --git a/Source/FactoryGame/Public/Buildables/FGBuildable.h b/Source/FactoryGame/Public/Buildables/FGBuildable.h
+index 2215e41afb..7935ac6089 100644
+--- a/Source/FactoryGame/Public/Buildables/FGBuildable.h
++++ b/Source/FactoryGame/Public/Buildables/FGBuildable.h
+@@ -504,7 +504,7 @@ public:
+ 	FORCEINLINE TArray<FBox> GetOcclusionBoxes() const  									{ return mOcclusionBoxInfo; }
+ 	FORCEINLINE float GetOcclusionShapeCustomScaleOffset() const 							{ return mScaleCustomOffset; }
+ 	FORCEINLINE EFGRainOcclusionShapeScaling GetOcclusionShapeCustomScalingMode() const		{ return mCustomScaleType; }
+-	FORCEINLINE virtual FSimpleBuildingInfo GetRainOcclusionShape()							{ return FSimpleBuildingInfo(this); }
++	FORCEINLINE virtual FSimpleBuildingInfo GetRainOcclusionShape()							{ return FSimpleBuildingInfo(); }
+ 
+ 	/* Not replicated! */
+ 	void ToggleInstanceVisibility( bool bNewState );
+diff --git a/Source/FactoryGame/Public/FGRailroadSignalBlock.h b/Source/FactoryGame/Public/FGRailroadSignalBlock.h
+index c00ac8d210..3bb40273cd 100644
+--- a/Source/FactoryGame/Public/FGRailroadSignalBlock.h
++++ b/Source/FactoryGame/Public/FGRailroadSignalBlock.h
+@@ -180,6 +180,7 @@ private:
+  */
+ struct FACTORYGAME_API FFGRailroadSignalBlock : public TSharedFromThis< FFGRailroadSignalBlock >
+ {
++	friend class FIRRailroadHelper;
+ public:
+ 	/**
+ 	 * Called bu the tracks when a vehicle enters and exits a section of track.
+diff --git a/Source/FactoryGame/Public/Buildables/FGBuildableRailroadSwitchControl.h b/Source/FactoryGame/Public/Buildables/FGBuildableRailroadSwitchControl.h
+index 99025de9bf..13945dbd65 100644
+--- a/Source/FactoryGame/Public/Buildables/FGBuildableRailroadSwitchControl.h
++++ b/Source/FactoryGame/Public/Buildables/FGBuildableRailroadSwitchControl.h
+@@ -7,6 +7,8 @@
+ #include "FGUseableInterface.h"
+ #include "FGBuildableRailroadSwitchControl.generated.h"
+ 
++class UFGRailroadTrackConnectionComponent;
++
+ /**
+  * Struct containing packaged switch data so we can get an OnRep for them as a group.
+  */
